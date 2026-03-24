@@ -2,6 +2,18 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Backend local
+
+O projeto agora possui uma base simples de backend em `server/`.
+
+- Rode `npm run dev:server` para iniciar o backend local.
+- A rota `GET /api/health` valida se o servidor subiu.
+- A rota `GET /api/database` mostra o estado atual da configuracao do banco.
+- Use `.env.example` como base para criar seu `.env`.
+
+O arquivo preparado para a futura conexao com banco esta em `server/database/connection.js`.
+Esse e o ponto ideal para plugar PostgreSQL, MySQL, SQL Server ou outro driver quando voce decidir qual banco usar.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

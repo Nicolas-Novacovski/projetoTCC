@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import Swal from 'sweetalert2'
 import './App.css'
 
 type UserRole = 'student' | 'admin'
@@ -108,6 +109,23 @@ const reports = [
   { title: 'Comentario aguardando revisao', detail: 'Mensagem sinalizada automaticamente por linguagem inadequada.' },
 ]
 
+const toast = Swal.mixin({
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 2400,
+  timerProgressBar: true,
+})
+
+function showFeatureAlert(title: string, text: string) {
+  return Swal.fire({
+    icon: 'info',
+    title,
+    text,
+    confirmButtonText: 'Entendi',
+  })
+}
+
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -128,30 +146,92 @@ function App() {
     { label: 'Moderacao', icon: ShieldIcon, view: 'moderation' as PageView, visible: userRole === 'admin' },
   ].filter((item) => item.visible)
 
-  function handleLogin(event: FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+
     if (loginMode === 'student') {
       const normalizedRa = ra.replace(/\D/g, '')
-      if (normalizedRa.length !== 10) return setErrorMessage('O RA deve conter 10 digitos.')
-      if (!birthDate) return setErrorMessage('Informe a data de nascimento para continuar.')
+      if (normalizedRa.length !== 10) {
+        setErrorMessage('O RA deve conter 10 digitos.')
+        await Swal.fire({
+          icon: 'warning',
+          title: 'RA incompleto',
+          text: 'Informe os 10 digitos do RA para continuar.',
+          confirmButtonText: 'Corrigir',
+        })
+        return
+      }
+
+      if (!birthDate) {
+        setErrorMessage('Informe a data de nascimento para continuar.')
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Data obrigatoria',
+          text: 'Preencha sua data de nascimento antes de entrar.',
+          confirmButtonText: 'Preencher',
+        })
+        return
+      }
+
       if (normalizedRa !== studentCredentials.ra || birthDate !== studentCredentials.birthDate) {
-        return setErrorMessage('RA ou data de nascimento invalidos.')
+        setErrorMessage('RA ou data de nascimento invalidos.')
+        await Swal.fire({
+          icon: 'error',
+          title: 'Acesso negado',
+          text: 'RA ou data de nascimento invalidos.',
+          confirmButtonText: 'Tentar novamente',
+        })
+        return
       }
       setUserRole('student')
       setCurrentView('home')
     } else {
-      if (!adminLogin.trim() || !adminPassword.trim()) return setErrorMessage('Preencha login e senha do administrador.')
+      if (!adminLogin.trim() || !adminPassword.trim()) {
+        setErrorMessage('Preencha login e senha do administrador.')
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Campos obrigatorios',
+          text: 'Preencha login e senha do administrador.',
+          confirmButtonText: 'Preencher',
+        })
+        return
+      }
+
       if (adminLogin !== adminCredentials.login || adminPassword !== adminCredentials.password) {
-        return setErrorMessage('Login de administrador invalido.')
+        setErrorMessage('Login de administrador invalido.')
+        await Swal.fire({
+          icon: 'error',
+          title: 'Credenciais invalidas',
+          text: 'Login de administrador invalido.',
+          confirmButtonText: 'Tentar novamente',
+        })
+        return
       }
       setUserRole('admin')
       setCurrentView('moderation')
     }
     setErrorMessage('')
     setIsAuthenticated(true)
+    await toast.fire({
+      icon: 'success',
+      title: loginMode === 'student' ? 'Login realizado com sucesso.' : 'Moderacao liberada.',
+    })
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Deseja sair do sistema?',
+      text: 'Sua sessao atual sera encerrada.',
+      showCancelButton: true,
+      confirmButtonText: 'Sair',
+      cancelButtonText: 'Continuar',
+    })
+
+    if (!result.isConfirmed) {
+      return
+    }
+
     setIsAuthenticated(false)
     setIsSidebarOpen(true)
     setCurrentView('mural')
@@ -162,6 +242,10 @@ function App() {
     setAdminLogin('')
     setAdminPassword('')
     setErrorMessage('')
+    await toast.fire({
+      icon: 'success',
+      title: 'Sessao encerrada.',
+    })
   }
 
   if (!isAuthenticated) {
@@ -182,7 +266,7 @@ function App() {
               <small>{loginMode === 'student' ? 'Use apenas numeros no campo de acesso.' : 'Senha de teste: moderacao123'}</small>
             </div>
           </div>
-          <form className="login-card" onSubmit={handleLogin}>
+          <form className="login-card" onSubmit={(event) => void handleLogin(event)}>
             <div className="login-card-header">
               <h2>{loginMode === 'student' ? 'Login do aluno' : 'Login do administrador'}</h2>
               <p>Preencha os dados para entrar no sistema.</p>
@@ -239,7 +323,7 @@ function App() {
           </div>
           <div className="topbar-actions">
             <button className="icon-button notification-button" type="button" aria-label="Notificacoes"><BellIcon /><span className="notification-dot" aria-hidden="true" /></button>
-            <button className="session-button" type="button" onClick={handleLogout}>Sair</button>
+            <button className="session-button" type="button" onClick={() => void handleLogout()}>Sair</button>
           </div>
         </header>
         {currentView === 'home' ? <HomeView /> : null}
@@ -287,6 +371,15 @@ function RidesView() {
   const filteredRides = rides.filter((ride) => ride.zone === selectedZone)
   const selectedSpot = rideHotspots.find((spot) => spot.id === selectedZone)
 
+  async function handleRideRequest(ride: RideOffer) {
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitacao enviada',
+      html: `<strong>${ride.driver}</strong><br />${ride.title}<br />Ponto de encontro: ${ride.meeting}`,
+      confirmButtonText: 'Fechar',
+    })
+  }
+
   return (
     <section className="page-section rides-section">
       <div className="page-heading">
@@ -294,7 +387,7 @@ function RidesView() {
           <h2>Caronas</h2>
           <p>Selecione um ponto de Curitiba no mapa para ver as caronas daquele bairro.</p>
         </div>
-        <button className="secondary-button" type="button">Oferecer carona</button>
+        <button className="secondary-button" type="button" onClick={() => void showFeatureAlert('Cadastro de carona', 'Aqui podemos abrir um formulario conectado ao backend para publicar novas rotas.')}>Oferecer carona</button>
       </div>
       <div className="rides-hero">
         <div className="rides-summary-card">
@@ -364,7 +457,7 @@ function RidesView() {
                   <div><span className="ride-meta-label">Encontro</span><strong>{ride.meeting}</strong></div>
                   <div><span className="ride-meta-label">Veiculo</span><strong>{ride.vehicle}</strong></div>
                 </div>
-                <button className="primary-button" type="button">Solicitar vaga</button>
+                <button className="primary-button" type="button" onClick={() => void handleRideRequest(ride)}>Solicitar vaga</button>
               </article>
             ))}
           </div>
@@ -380,6 +473,22 @@ function LostFoundView() {
   const previewItem = lostItems.find((item) => item.id === previewItemId) ?? lostItems[0]
   const selectedItem = lostItems.find((item) => item.id === selectedItemId) ?? null
 
+  async function handleRegisterItem() {
+    await showFeatureAlert(
+      'Registro de item',
+      'Esse botao pode abrir um formulario para cadastrar itens encontrados assim que o backend estiver recebendo dados.',
+    )
+  }
+
+  async function handleReturnRequest(item: LostItem) {
+    await Swal.fire({
+      icon: 'success',
+      title: 'Solicitacao registrada',
+      html: `<strong>${item.title}</strong><br />Entre em contato com: ${item.contact}`,
+      confirmButtonText: 'Ok',
+    })
+  }
+
   return (
     <section className="page-section lost-found-section">
       <div className="page-heading">
@@ -387,7 +496,7 @@ function LostFoundView() {
           <h2>Achados e Perdidos</h2>
           <p>Itens localizados no campus e registrados para retirada.</p>
         </div>
-        <button className="secondary-button" type="button">Registrar item</button>
+        <button className="secondary-button" type="button" onClick={() => void handleRegisterItem()}>Registrar item</button>
       </div>
       <div className="lost-found-toolbar">
         <span className="filter-chip is-active">Todos</span>
@@ -472,7 +581,7 @@ function LostFoundView() {
                 <span className="detail-label">Contato</span>
                 <strong>{selectedItem.contact}</strong>
               </div>
-              <button className="primary-button" type="button">Solicitar devolucao</button>
+              <button className="primary-button" type="button" onClick={() => void handleReturnRequest(selectedItem)}>Solicitar devolucao</button>
             </div>
           </div>
         </div>
@@ -482,6 +591,22 @@ function LostFoundView() {
 }
 
 function MuralView({ userRole }: { userRole: UserRole }) {
+  async function handleCreatePost() {
+    await Swal.fire({
+      icon: 'info',
+      title: 'Nova publicacao',
+      text: 'O proximo passo aqui e abrir um modal com formulario para enviar posts ao backend.',
+      confirmButtonText: 'Perfeito',
+    })
+  }
+
+  async function handleApply(cardTitle: string) {
+    await toast.fire({
+      icon: 'success',
+      title: `Interesse registrado em "${cardTitle}".`,
+    })
+  }
+
   return (
     <section className="page-section">
       <div className="page-heading">
@@ -493,7 +618,7 @@ function MuralView({ userRole }: { userRole: UserRole }) {
               : 'Vagas, eventos e comunicados oficiais.'}
           </p>
         </div>
-        <button className="secondary-button" type="button">Postar no Mural</button>
+        <button className="secondary-button" type="button" onClick={() => void handleCreatePost()}>Postar no Mural</button>
       </div>
       <div className="content-grid">
         <div className="mural-list">
@@ -518,7 +643,7 @@ function MuralView({ userRole }: { userRole: UserRole }) {
                     <span>{card.meta[1]}</span>
                   </div>
                 ) : null}
-                {card.button ? <button className="primary-button" type="button">{card.button}</button> : null}
+                {card.button ? <button className="primary-button" type="button" onClick={() => void handleApply(card.title)}>{card.button}</button> : null}
               </article>
             )
           })}
@@ -544,6 +669,15 @@ function MuralView({ userRole }: { userRole: UserRole }) {
 }
 
 function ModerationView() {
+  async function handleModerationAction(action: 'Aprovar' | 'Revisar', item: ModerationPost) {
+    await Swal.fire({
+      icon: action === 'Aprovar' ? 'success' : 'info',
+      title: `${action} publicacao`,
+      html: `<strong>${item.title}</strong><br />Autor: ${item.author}<br />Categoria: ${item.category}`,
+      confirmButtonText: 'Fechar',
+    })
+  }
+
   return (
     <section className="page-section moderation-section">
       <div className="page-heading">
@@ -551,7 +685,7 @@ function ModerationView() {
           <h2>Central de Moderacao</h2>
           <p>Revise publicacoes, acompanhe denuncias e aprove o que vai para o mural.</p>
         </div>
-        <button className="secondary-button" type="button">Exportar relatorio</button>
+        <button className="secondary-button" type="button" onClick={() => void showFeatureAlert('Exportacao de relatorio', 'Quando o backend estiver completo, este botao pode gerar um CSV ou PDF com o historico da moderacao.')}>Exportar relatorio</button>
       </div>
       <div className="moderation-overview">
         <article className="overview-card"><span>Em analise</span><strong>12</strong><p>Publicacoes aguardando revisao manual.</p></article>
@@ -562,7 +696,7 @@ function ModerationView() {
         <section className="moderation-card moderation-table-card">
           <div className="moderation-card-header">
             <div><h3>Fila de aprovacao</h3><p>Itens recebidos pelo mural academico.</p></div>
-            <button className="ghost-button" type="button">Atualizar</button>
+            <button className="ghost-button" type="button" onClick={() => void toast.fire({ icon: 'success', title: 'Fila de moderacao atualizada.' })}>Atualizar</button>
           </div>
           <div className="moderation-table">
             <div className="moderation-table-head">
@@ -574,7 +708,7 @@ function ModerationView() {
                 <span>{item.category}</span>
                 <span>{item.author}</span>
                 <span className={`status-pill status-${slugify(item.status)}`}>{item.status}</span>
-                <div className="row-actions"><button type="button">Aprovar</button><button type="button">Revisar</button></div>
+                <div className="row-actions"><button type="button" onClick={() => void handleModerationAction('Aprovar', item)}>Aprovar</button><button type="button" onClick={() => void handleModerationAction('Revisar', item)}>Revisar</button></div>
               </div>
             ))}
           </div>
