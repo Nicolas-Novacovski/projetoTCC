@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import type { FormEvent } from 'react'
+import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import Swal from 'sweetalert2'
 import './App.css'
 
 type UserRole = 'student' | 'admin'
-type PageView = 'home' | 'rides' | 'lostFound' | 'mural' | 'moderation'
+type PageView = 'home' | 'rides' | 'lostFound' | 'career' | 'mural' | 'moderation'
 type LoginMode = 'student' | 'admin'
 type PostStatus = 'Pendente' | 'Aprovado' | 'Revisao'
 type RideZone = 'Centro' | 'Boqueirao' | 'Pinheirinho' | 'CIC'
@@ -49,6 +49,23 @@ type LostItem = {
   contact: string
 }
 
+type PublishForm = {
+  category: string
+  title: string
+  location: string
+  description: string
+}
+
+type CareerProfile = {
+  course: string
+  semester: string
+  resumeFileName: string
+  desiredArea: string
+  salaryExpectation: string
+  workModel: string
+  preferredCity: string
+}
+
 const studentCredentials = { ra: '2024193227', birthDate: '2004-05-18' }
 const adminCredentials = { login: 'admin.utp', password: 'moderacao123' }
 
@@ -73,9 +90,10 @@ const muralCards = [
   },
 ]
 
-const studyGroups = [
-  { title: 'Calculo I', schedule: 'Sabados, 14h' },
-  { title: 'Algoritmos', schedule: 'Tercas, 18h' },
+const importantDeadlines = [
+  { title: 'Rematricula 2026/2', detail: 'Ate 05/07/2026' },
+  { title: 'Horas complementares', detail: 'Envio ate 18/06/2026' },
+  { title: 'Solicitacao de estagio', detail: 'Validacao em 3 dias uteis' },
 ]
 
 const rides: RideOffer[] = [
@@ -137,11 +155,28 @@ function App() {
   const [adminLogin, setAdminLogin] = useState('')
   const [adminPassword, setAdminPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
+  const [publishForm, setPublishForm] = useState<PublishForm>({
+    category: 'Vaga',
+    title: '',
+    location: '',
+    description: '',
+  })
+  const [careerProfile, setCareerProfile] = useState<CareerProfile>({
+    course: 'Analise e Desenvolvimento de Sistemas',
+    semester: '4 semestre',
+    resumeFileName: 'curriculo-nicolas.pdf',
+    desiredArea: 'Desenvolvimento Front-end',
+    salaryExpectation: 'R$ 1.800 a R$ 2.500',
+    workModel: 'Hibrido',
+    preferredCity: 'Curitiba',
+  })
 
   const menuItems = [
     { label: 'Inicio', icon: GridIcon, view: 'home' as PageView, visible: userRole === 'student' },
     { label: 'Caronas', icon: CarIcon, view: 'rides' as PageView, visible: userRole === 'student' },
     { label: 'Achados e Perdidos', icon: SearchIcon, view: 'lostFound' as PageView, visible: userRole === 'student' },
+    { label: 'Perfil Profissional', icon: UserCardIcon, view: 'career' as PageView, visible: userRole === 'student' },
     { label: 'Mural', icon: BriefcaseIcon, view: 'mural' as PageView, visible: true },
     { label: 'Moderacao', icon: ShieldIcon, view: 'moderation' as PageView, visible: userRole === 'admin' },
   ].filter((item) => item.visible)
@@ -248,6 +283,32 @@ function App() {
     })
   }
 
+  async function handlePublishSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!publishForm.title.trim() || !publishForm.description.trim()) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Campos obrigatorios',
+        text: 'Preencha pelo menos titulo e descricao da publicacao.',
+        confirmButtonText: 'Corrigir',
+      })
+      return
+    }
+
+    setIsPublishModalOpen(false)
+    setPublishForm({
+      category: 'Vaga',
+      title: '',
+      location: '',
+      description: '',
+    })
+    await toast.fire({
+      icon: 'success',
+      title: 'Publicacao enviada para moderacao.',
+    })
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="login-page">
@@ -329,9 +390,95 @@ function App() {
         {currentView === 'home' ? <HomeView /> : null}
         {currentView === 'rides' ? <RidesView /> : null}
         {currentView === 'lostFound' ? <LostFoundView /> : null}
-        {currentView === 'mural' ? <MuralView userRole={userRole} /> : null}
+        {currentView === 'career' ? (
+          <CareerView careerProfile={careerProfile} onCareerChange={setCareerProfile} />
+        ) : null}
+        {currentView === 'mural' ? (
+          <MuralView userRole={userRole} onOpenPublishModal={() => setIsPublishModalOpen(true)} />
+        ) : null}
         {currentView === 'moderation' ? <ModerationView /> : null}
       </main>
+
+      {isPublishModalOpen ? (
+        <div className="details-modal-backdrop" onClick={() => setIsPublishModalOpen(false)}>
+          <div className="details-modal publish-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="details-modal-header">
+              <div>
+                <span className="detail-tag">Novo post</span>
+                <h3>Publicar no mural</h3>
+              </div>
+              <button className="ghost-button" type="button" onClick={() => setIsPublishModalOpen(false)}>
+                Fechar
+              </button>
+            </div>
+
+            <form className="publish-form" onSubmit={(event) => void handlePublishSubmit(event)}>
+              <div className="publish-grid">
+                <label className="form-field">
+                  <span>Categoria</span>
+                  <select
+                    value={publishForm.category}
+                    onChange={(event) =>
+                      setPublishForm((current) => ({ ...current, category: event.target.value }))
+                    }
+                  >
+                    <option>Vaga</option>
+                    <option>Evento</option>
+                    <option>Comunicado</option>
+                    <option>Grupo de estudo</option>
+                  </select>
+                </label>
+
+                <label className="form-field">
+                  <span>Local ou empresa</span>
+                  <input
+                    type="text"
+                    placeholder="Ex.: Curitiba ou Empresa XPTO"
+                    value={publishForm.location}
+                    onChange={(event) =>
+                      setPublishForm((current) => ({ ...current, location: event.target.value }))
+                    }
+                  />
+                </label>
+              </div>
+
+              <label className="form-field">
+                <span>Titulo</span>
+                <input
+                  type="text"
+                  placeholder="Ex.: Estagio em Desenvolvimento Web"
+                  value={publishForm.title}
+                  onChange={(event) =>
+                    setPublishForm((current) => ({ ...current, title: event.target.value }))
+                  }
+                />
+              </label>
+
+              <label className="form-field">
+                <span>Descricao</span>
+                <textarea
+                  rows={6}
+                  placeholder="Descreva a oportunidade, evento ou comunicado."
+                  value={publishForm.description}
+                  onChange={(event) =>
+                    setPublishForm((current) => ({ ...current, description: event.target.value }))
+                  }
+                />
+              </label>
+
+              <div className="details-modal-footer">
+                <div>
+                  <span className="detail-label">Fluxo</span>
+                  <strong>O post sera enviado para moderacao antes de aparecer no mural.</strong>
+                </div>
+                <button className="primary-button" type="submit">
+                  Enviar publicacao
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -590,15 +737,155 @@ function LostFoundView() {
   )
 }
 
-function MuralView({ userRole }: { userRole: UserRole }) {
-  async function handleCreatePost() {
-    await Swal.fire({
-      icon: 'info',
-      title: 'Nova publicacao',
-      text: 'O proximo passo aqui e abrir um modal com formulario para enviar posts ao backend.',
-      confirmButtonText: 'Perfeito',
+function CareerView({
+  careerProfile,
+  onCareerChange,
+}: {
+  careerProfile: CareerProfile
+  onCareerChange: Dispatch<SetStateAction<CareerProfile>>
+}) {
+  async function handleSaveProfile() {
+    await toast.fire({
+      icon: 'success',
+      title: 'Perfil profissional atualizado.',
     })
   }
+
+  return (
+    <section className="page-section career-section">
+      <div className="page-heading">
+        <div>
+          <h2>Perfil Profissional</h2>
+          <p>Cadastre seu curriculo e defina preferencias para receber vagas mais alinhadas.</p>
+        </div>
+        <button className="secondary-button" type="button" onClick={() => void handleSaveProfile()}>
+          Salvar preferencias
+        </button>
+      </div>
+
+      <div className="career-layout">
+        <section className="career-card">
+          <div className="career-card-header">
+            <h3>Curriculo</h3>
+            <p>Suba seu arquivo e mantenha seus dados academicos atualizados.</p>
+          </div>
+
+          <div className="resume-upload-card">
+            <span className="detail-label">Arquivo atual</span>
+            <strong>{careerProfile.resumeFileName}</strong>
+            <label className="ghost-upload-button">
+              Trocar curriculo
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) {
+                    onCareerChange((current) => ({ ...current, resumeFileName: file.name }))
+                  }
+                }}
+              />
+            </label>
+          </div>
+
+          <div className="publish-grid">
+            <label className="form-field">
+              <span>Curso</span>
+              <input
+                type="text"
+                value={careerProfile.course}
+                onChange={(event) =>
+                  onCareerChange((current) => ({ ...current, course: event.target.value }))
+                }
+              />
+            </label>
+
+            <label className="form-field">
+              <span>Semestre</span>
+              <input
+                type="text"
+                value={careerProfile.semester}
+                onChange={(event) =>
+                  onCareerChange((current) => ({ ...current, semester: event.target.value }))
+                }
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="career-card">
+          <div className="career-card-header">
+            <h3>Preferencias de vaga</h3>
+            <p>Essas informacoes ajudam a priorizar oportunidades no mural.</p>
+          </div>
+
+          <div className="publish-grid">
+            <label className="form-field">
+              <span>Area desejada</span>
+              <input
+                type="text"
+                value={careerProfile.desiredArea}
+                onChange={(event) =>
+                  onCareerChange((current) => ({ ...current, desiredArea: event.target.value }))
+                }
+              />
+            </label>
+
+            <label className="form-field">
+              <span>Pretensao salarial</span>
+              <input
+                type="text"
+                value={careerProfile.salaryExpectation}
+                onChange={(event) =>
+                  onCareerChange((current) => ({
+                    ...current,
+                    salaryExpectation: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="form-field">
+              <span>Modelo de trabalho</span>
+              <select
+                value={careerProfile.workModel}
+                onChange={(event) =>
+                  onCareerChange((current) => ({ ...current, workModel: event.target.value }))
+                }
+              >
+                <option>Presencial</option>
+                <option>Hibrido</option>
+                <option>Remoto</option>
+              </select>
+            </label>
+
+            <label className="form-field">
+              <span>Cidade de preferencia</span>
+              <input
+                type="text"
+                value={careerProfile.preferredCity}
+                onChange={(event) =>
+                  onCareerChange((current) => ({
+                    ...current,
+                    preferredCity: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
+        </section>
+      </div>
+    </section>
+  )
+}
+
+function MuralView({
+  userRole,
+  onOpenPublishModal,
+}: {
+  userRole: UserRole
+  onOpenPublishModal: () => void
+}) {
 
   async function handleApply(cardTitle: string) {
     await toast.fire({
@@ -618,7 +905,7 @@ function MuralView({ userRole }: { userRole: UserRole }) {
               : 'Vagas, eventos e comunicados oficiais.'}
           </p>
         </div>
-        <button className="secondary-button" type="button" onClick={() => void handleCreatePost()}>Postar no Mural</button>
+        <button className="secondary-button" type="button" onClick={onOpenPublishModal}>Postar no Mural</button>
       </div>
       <div className="content-grid">
         <div className="mural-list">
@@ -651,13 +938,13 @@ function MuralView({ userRole }: { userRole: UserRole }) {
         <aside className="side-panel">
           <div className="study-card">
             <div className="study-heading">
-              <div className="study-title"><UsersIcon /><h3>Grupos de Estudo</h3></div>
+              <div className="study-title"><CalendarIcon /><h3>Prazos Importantes</h3></div>
             </div>
             <div className="study-list">
-              {studyGroups.map((group) => (
-                <div key={group.title} className="study-item">
-                  <div><h4>{group.title}</h4><p>{group.schedule}</p></div>
-                  <button type="button">Entrar</button>
+              {importantDeadlines.map((item) => (
+                <div key={item.title} className="study-item">
+                  <div><h4>{item.title}</h4><p>{item.detail}</p></div>
+                  <button type="button">Ver</button>
                 </div>
               ))}
             </div>
@@ -741,6 +1028,7 @@ function getPageTitle(view: PageView) {
   if (view === 'home') return 'Inicio'
   if (view === 'rides') return 'Caronas'
   if (view === 'lostFound') return 'Achados e Perdidos'
+  if (view === 'career') return 'Perfil Profissional'
   if (view === 'moderation') return 'Moderacao'
   return 'Mural'
 }
@@ -787,8 +1075,8 @@ function ClockIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>
 }
 
-function UsersIcon() {
-  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" /><path d="M17 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" /><path d="M4 18a5 5 0 0 1 10 0" /><path d="M14 18a4 4 0 0 1 6 0" /></svg>
+function UserCardIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8.5 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" /><path d="M6 17a4 4 0 0 1 5 0" /><path d="M14 8h4M14 12h4M14 16h3" /></svg>
 }
 
 export default App
