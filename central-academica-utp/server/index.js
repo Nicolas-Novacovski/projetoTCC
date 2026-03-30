@@ -1,29 +1,36 @@
-import { createServer } from 'node:http'
+import cors from 'cors'
+import express from 'express'
 import { env } from './config/env.js'
-import { handleRoutes } from './routes/index.js'
+import { connectToDatabase } from './database/connection.js'
+import { ensureSeedData } from './database/seed.js'
+import { router } from './routes/index.js'
 
-const server = createServer(async (request, response) => {
-  try {
-    await handleRoutes(request, response)
-  } catch (error) {
-    response.writeHead(500, {
-      'Content-Type': 'application/json; charset=utf-8',
-    })
+const app = express()
 
-    response.end(
-      JSON.stringify(
-        {
-          status: 'error',
-          message: 'Erro interno no servidor.',
-          details: error instanceof Error ? error.message : 'Erro desconhecido.',
-        },
-        null,
-        2,
-      ),
-    )
-  }
+app.use(cors())
+app.use(express.json())
+app.use('/api', router)
+
+app.use((error, _request, response, _next) => {
+  console.error('Erro interno no servidor.', error)
+
+  response.status(500).json({
+    status: 'error',
+    message: 'Erro interno no servidor.',
+    details: error instanceof Error ? error.message : 'Erro desconhecido.',
+  })
 })
 
-server.listen(env.port, () => {
-  console.log(`Backend iniciado em http://localhost:${env.port}`)
+async function bootstrap() {
+  await connectToDatabase()
+  await ensureSeedData()
+
+  app.listen(env.port, () => {
+    console.log(`Backend iniciado em http://localhost:${env.port}`)
+  })
+}
+
+bootstrap().catch((error) => {
+  console.error('Falha ao iniciar a aplicacao.', error)
+  process.exit(1)
 })

@@ -1,39 +1,44 @@
+import pg from 'pg'
 import { env } from '../config/env.js'
 
-let cachedConnection = null
-
-function createPendingConnection() {
-  return {
-    status: 'pending',
-    client: env.database.client,
-    message:
-      'Conexao com banco ainda nao implementada. Configure DB_CLIENT e substitua este adaptador pelo driver real.',
-  }
-}
+const { Pool } = pg
+let cachedPool = null
 
 export async function connectToDatabase() {
-  if (cachedConnection) {
-    return cachedConnection
+  if (cachedPool) {
+    return cachedPool
   }
 
-  if (env.database.client === 'none') {
-    cachedConnection = {
-      status: 'disabled',
-      client: 'none',
-      message:
-        'Nenhum banco configurado ainda. Defina as variaveis do .env quando escolher o banco.',
-    }
-
-    return cachedConnection
+  const poolConfig = {
+    host: env.database.host,
+    port: env.database.port,
+    database: env.database.name,
+    user: env.database.user,
+    password: env.database.password,
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
   }
 
-  cachedConnection = createPendingConnection()
-  return cachedConnection
+  try {
+    cachedPool = new Pool(poolConfig)
+
+    const client = await cachedPool.connect()
+    console.log('SUCESSO: Conectado ao banco de dados Neon (PostgreSQL)!')
+    client.release()
+
+    return cachedPool
+  } catch (error) {
+    console.error('ERRO FATAL: Nao foi possivel conectar ao banco.', error.message)
+    cachedPool = null
+    throw error
+  }
 }
 
 export function getDatabaseConfig() {
   return {
-    client: env.database.client,
+    client: 'pg',
     host: env.database.host,
     port: env.database.port,
     name: env.database.name,
