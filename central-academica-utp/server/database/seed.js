@@ -282,6 +282,21 @@ async function ensureReport(pool, values) {
 
 export async function ensureSeedData() {
   const pool = await connectToDatabase()
+  await pool.query(
+    `
+      create table if not exists pedidos_caronas (
+        id_pedido serial primary key,
+        id_solicitante integer references usuarios(id_usuario) on delete set null,
+        zona_destino varchar(50) not null,
+        endereco_embarque varchar(255) not null,
+        whatsapp_solicitante varchar(30) not null,
+        observacoes text,
+        status_pedido varchar(30) not null default 'Aberto',
+        id_usuario_aceitou integer references usuarios(id_usuario) on delete set null,
+        data_criacao timestamp without time zone not null default now()
+      )
+    `,
+  )
   await syncSequence(pool, 'usuarios', 'id_usuario')
   await syncSequence(pool, 'perfis_profissionais', 'id_perfil')
   await syncSequence(pool, 'publicacoes_mural', 'id_publicacao')
@@ -289,6 +304,7 @@ export async function ensureSeedData() {
   await syncSequence(pool, 'achados_perdidos', 'id_item')
   await syncSequence(pool, 'denuncias', 'id_denuncia')
   await syncSequence(pool, 'solicitacoes_caronas', 'id_solicitacao')
+  await syncSequence(pool, 'pedidos_caronas', 'id_pedido')
 
   const studentId = await findOrCreateStudent(pool)
   await findOrCreateAdmin(pool)

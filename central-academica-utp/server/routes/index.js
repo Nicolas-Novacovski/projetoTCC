@@ -141,11 +141,10 @@ router.post('/rides', async (request, response) => {
   })
 })
 
-router.post('/rides/:id/requests', async (request, response) => {
-  const rideId = Number(request.params.id)
-  const { userId, whatsapp, pickupAddress } = request.body
+router.post('/ride-requests', async (request, response) => {
+  const { userId, zone, whatsapp, pickupAddress } = request.body
 
-  if (!rideId || !userId || !whatsapp || !pickupAddress) {
+  if (!userId || !zone || !whatsapp || !pickupAddress) {
     return response.status(400).json({
       status: 'error',
       message: 'Campos obrigatorios da solicitacao nao enviados.',
@@ -153,7 +152,7 @@ router.post('/rides/:id/requests', async (request, response) => {
   }
 
   const data = await createRideRequest({
-    rideId,
+    zone,
     userId: Number(userId),
     whatsapp,
     pickupAddress,
@@ -188,7 +187,7 @@ router.patch('/ride-requests/:id/status', async (request, response) => {
   const requestId = Number(request.params.id)
   const { userId, status } = request.body
 
-  if (!requestId || !userId || !['Aceita', 'Recusada'].includes(status)) {
+  if (!requestId || !userId || !['Aceito', 'Aberto'].includes(status)) {
     return response.status(400).json({
       status: 'error',
       message: 'Dados invalidos para atualizar a solicitacao.',

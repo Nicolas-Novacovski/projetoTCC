@@ -102,12 +102,15 @@ function mapReport(row) {
 
 function mapRideRequest(row) {
   return {
-    id: row.id_solicitacao,
-    rideId: row.id_carona,
-    rideTitle: row.carona_titulo,
-    requesterWhatsapp: row.whatsapp_solicitante,
+    id: row.id_pedido,
+    requesterId: row.id_solicitante,
+    zone: row.zona_destino,
     pickupAddress: row.endereco_embarque,
-    status: row.status_solicitacao,
+    requesterWhatsapp: row.whatsapp_solicitante,
+    notes: row.observacoes,
+    status: row.status_pedido,
+    acceptedByUserId: row.id_usuario_aceitou,
+    acceptedByName: row.usuario_aceitou_nome,
     createdAt: formatTimestamp(row.data_criacao),
   }
 }
@@ -294,14 +297,12 @@ export async function getAppData(userId, role) {
       pool.query(
         `
           select
-            s.*,
-            c.titulo as carona_titulo
-          from solicitacoes_caronas s
-          join caronas c on c.id_carona = s.id_carona
-          where c.id_motorista = $1
-          order by s.data_criacao desc, s.id_solicitacao desc
+            p.*,
+            coalesce(nullif(u.login_admin, ''), concat('Aluno ', u.ra), 'Comunidade UTP') as usuario_aceitou_nome
+          from pedidos_caronas p
+          left join usuarios u on u.id_usuario = p.id_usuario_aceitou
+          order by p.data_criacao desc, p.id_pedido desc
         `,
-        [userId],
       ),
     ])
 
@@ -393,45 +394,23 @@ export async function createRide({
   return getAppData(userId, 'student')
 }
 
-export async function createRideRequest({ rideId, userId, whatsapp, pickupAddress }) {
+export async function createRideRequest({ zone, userId, whatsapp, pickupAddress }) {
   const pool = await connectToDatabase()
-  const rideResult = await pool.query(
-    `
-      select id_carona, id_motorista, status_carona
-      from caronas
-      where id_carona = $1
-      limit 1
-    `,
-    [rideId],
-  )
-
-  const ride = rideResult.rows[0]
-
-  if (!ride) {
-    throw new Error('Carona nao encontrada.')
-  }
-
-  if (ride.status_carona !== 'Ativa') {
-    throw new Error('Essa carona nao esta mais disponivel.')
-  }
-
-  if (ride.id_motorista === userId) {
-    throw new Error('Voce nao pode solicitar a propria carona.')
-  }
 
   await pool.query(
     `
-      insert into solicitacoes_caronas (
-        id_carona,
+      insert into pedidos_caronas (
         id_solicitante,
+        zona_destino,
         whatsapp_solicitante,
         endereco_embarque,
-        status_solicitacao,
+        observacoes,
+        status_pedido,
         data_criacao
       )
-      values ($1, $2, $3, $4, 'Pendente', now())
+      values ($1, $2, $3, $4, $5, 'Aberto', now())
     `,
-    [rideId, userId, whatsapp, pickupAddress],
+    [userId, zone, whatsapp, pickupAddress, null],
   )
 
   return getAppData(userId, 'student')
@@ -460,29 +439,32 @@ export async function updateRideRequestStatus(requestId, userId, status) {
   const pool = await connectToDatabase()
   const requestResult = await pool.query(
     `
-      select s.id_solicitacao, s.id_carona
-      from solicitacoes_caronas s
-      join caronas c on c.id_carona = s.id_carona
-      where s.id_solicitacao = $1
-        and c.id_motorista = $2
+      select id_pedido, id_solicitante
+      from pedidos_caronas
+      where id_pedido = $1
       limit 1
     `,
-    [requestId, userId],
+    [requestId],
   )
 
   const request = requestResult.rows[0]
 
   if (!request) {
-    throw new Error('Solicitacao de carona nao encontrada para este motorista.')
+    throw new Error('Pedido de carona nao encontrado.')
+  }
+
+  if (request.id_solicitante === userId) {
+    throw new Error('Voce nao pode aceitar o seu proprio pedido.')
   }
 
   await pool.query(
     `
-      update solicitacoes_caronas
-      set status_solicitacao = $2
-      where id_solicitacao = $1
+      update pedidos_caronas
+      set status_pedido = $2,
+          id_usuario_aceitou = $3
+      where id_pedido = $1
     `,
-    [requestId, status],
+    [requestId, status, status === 'Aceito' ? userId : null],
   )
 
   return getAppData(userId, 'student')
@@ -584,6 +566,7 @@ export async function getAdminDatabaseSnapshot(userId) {
     publicationsResult,
     ridesResult,
     rideRequestsResult,
+    publicRideRequestsResult,
     lostItemsResult,
     profilesResult,
     reportsResult,
@@ -618,6 +601,13 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
+        select id_pedido, id_solicitante, zona_destino, endereco_embarque, whatsapp_solicitante, status_pedido, id_usuario_aceitou, data_criacao
+        from pedidos_caronas
+        order by id_pedido desc
+      `,
+    ),
+    pool.query(
+      `
         select id_item, id_usuario_registro, titulo, local_encontrado, data_hora, status_item, categoria
         from achados_perdidos
         order by id_item desc
@@ -645,6 +635,7 @@ export async function getAdminDatabaseSnapshot(userId) {
       publicacoes_mural: publicationsResult.rows.length,
       caronas: ridesResult.rows.length,
       solicitacoes_caronas: rideRequestsResult.rows.length,
+      pedidos_caronas: publicRideRequestsResult.rows.length,
       achados_perdidos: lostItemsResult.rows.length,
       perfis_profissionais: profilesResult.rows.length,
       denuncias: reportsResult.rows.length,
@@ -654,6 +645,7 @@ export async function getAdminDatabaseSnapshot(userId) {
       publicacoes_mural: publicationsResult.rows,
       caronas: ridesResult.rows,
       solicitacoes_caronas: rideRequestsResult.rows,
+      pedidos_caronas: publicRideRequestsResult.rows,
       achados_perdidos: lostItemsResult.rows,
       perfis_profissionais: profilesResult.rows,
       denuncias: reportsResult.rows,

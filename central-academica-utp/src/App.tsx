@@ -88,11 +88,14 @@ type MuralPost = {
 type Report = { id: number; title: string; detail: string; status: string; createdAt: string }
 type RideRequest = {
   id: number
-  rideId: number
-  rideTitle: string
+  requesterId: number
+  zone: string
   requesterWhatsapp: string
   pickupAddress: string
+  notes: string | null
   status: string
+  acceptedByUserId: number | null
+  acceptedByName: string | null
   createdAt: string
 }
 type AppData = {
@@ -116,6 +119,7 @@ type AdminDatabaseSnapshot = {
     publicacoes_mural: Array<Record<string, unknown>>
     caronas: Array<Record<string, unknown>>
     solicitacoes_caronas: Array<Record<string, unknown>>
+    pedidos_caronas: Array<Record<string, unknown>>
     achados_perdidos: Array<Record<string, unknown>>
     perfis_profissionais: Array<Record<string, unknown>>
     denuncias: Array<Record<string, unknown>>
@@ -562,11 +566,12 @@ function App() {
           </div>
         </header>
         {currentView === 'home' ? <HomeView dashboard={appData.dashboard} /> : null}
-        {currentView === 'rides' ? <RidesView currentUserId={sessionUser.id} rides={appData.rides} rideHotspots={appData.rideHotspots} rideRequestsInbox={appData.rideRequestsInbox} onOpenRideModal={() => setIsRideModalOpen(true)} onRequestRide={async (rideId, payload) => {
-          const response = await requestJson<{ data: AppData }>(`/api/rides/${rideId}/requests`, {
+        {currentView === 'rides' ? <RidesView currentUserId={sessionUser.id} rides={appData.rides ?? []} rideHotspots={appData.rideHotspots ?? []} rideRequestsInbox={appData.rideRequestsInbox ?? []} onOpenRideModal={() => setIsRideModalOpen(true)} onCreateRideRequest={async (zone, payload) => {
+          const response = await requestJson<{ data: AppData }>(`/api/ride-requests`, {
             method: 'POST',
             body: JSON.stringify({
               userId: sessionUser.id,
+              zone,
               whatsapp: payload.whatsapp,
               pickupAddress: payload.pickupAddress,
             }),
@@ -578,10 +583,10 @@ function App() {
             body: JSON.stringify({ userId: sessionUser.id }),
           })
           setAppData(response.data)
-        }} onRespondRideRequest={async (requestId, status) => {
+        }} onAcceptRideRequest={async (requestId) => {
           const response = await requestJson<{ data: AppData }>(`/api/ride-requests/${requestId}/status`, {
             method: 'PATCH',
-            body: JSON.stringify({ userId: sessionUser.id, status }),
+            body: JSON.stringify({ userId: sessionUser.id, status: 'Aceito' }),
           })
           setAppData(response.data)
         }} /> : null}
@@ -689,43 +694,48 @@ function RidesView({
   rideHotspots,
   rideRequestsInbox,
   onOpenRideModal,
-  onRequestRide,
+  onCreateRideRequest,
   onCloseRide,
-  onRespondRideRequest,
+  onAcceptRideRequest,
 }: {
   currentUserId: number
   rides: RideOffer[]
   rideHotspots: RideHotspot[]
   rideRequestsInbox: RideRequest[]
   onOpenRideModal: () => void
-  onRequestRide: (rideId: number, payload: RideRequestForm) => Promise<void>
+  onCreateRideRequest: (zone: RideZone, payload: RideRequestForm) => Promise<void>
   onCloseRide: (rideId: number) => Promise<void>
-  onRespondRideRequest: (requestId: number, status: 'Aceita' | 'Recusada') => Promise<void>
+  onAcceptRideRequest: (requestId: number) => Promise<void>
 }) {
-  const [selectedZone, setSelectedZone] = useState<RideZone>(rideHotspots[0]?.id ?? 'Centro')
-  const [selectedRide, setSelectedRide] = useState<RideOffer | null>(null)
+  const safeRides = rides ?? []
+  const safeRideHotspots = rideHotspots ?? []
+  const safeRideRequestsInbox = rideRequestsInbox ?? []
+  const [selectedZone, setSelectedZone] = useState<RideZone>(safeRideHotspots[0]?.id ?? 'Centro')
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [requestForm, setRequestForm] = useState<RideRequestForm>({ whatsapp: '', pickupAddress: '' })
 
   useEffect(() => {
-    if (!rideHotspots.some((spot) => spot.id === selectedZone) && rideHotspots[0]) {
-      setSelectedZone(rideHotspots[0].id)
+    if (!safeRideHotspots.some((spot) => spot.id === selectedZone) && safeRideHotspots[0]) {
+      setSelectedZone(safeRideHotspots[0].id)
     }
-  }, [rideHotspots, selectedZone])
+  }, [safeRideHotspots, selectedZone])
 
-  const filteredRides = rides.filter((ride) => ride.zone === selectedZone)
-  const selectedSpot = rideHotspots.find((spot) => spot.id === selectedZone)
-  const myRideRequests = rideRequestsInbox.filter((request) =>
-    rides.some((ride) => ride.id === request.rideId && ride.driverId === currentUserId),
-  )
+  const filteredRides = safeRides.filter((ride) => ride.zone === selectedZone)
+  const selectedSpot = safeRideHotspots.find((spot) => spot.id === selectedZone)
+  const openRideRequests = safeRideRequestsInbox.filter((request) => request.status === 'Aberto')
+  const myOpenRideRequests = safeRideRequestsInbox.filter((request) => request.requesterId === currentUserId)
 
-  async function handleRideRequest(ride: RideOffer) {
-    setSelectedRide(ride)
+  async function handleTalkToDriver(ride: RideOffer) {
+    await Swal.fire({
+      icon: 'info',
+      title: 'Contato do motorista',
+      html: `<strong>${ride.driver}</strong><br />WhatsApp: ${ride.whatsapp}<br />Ponto sugerido: ${ride.meeting}`,
+      confirmButtonText: 'Fechar',
+    })
   }
 
   async function handleSubmitRideRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
-    if (!selectedRide) return
 
     if (!requestForm.whatsapp.trim() || !requestForm.pickupAddress.trim()) {
       await Swal.fire({
@@ -738,13 +748,13 @@ function RidesView({
     }
 
     try {
-      await onRequestRide(selectedRide.id, requestForm)
-      setSelectedRide(null)
+      await onCreateRideRequest(selectedZone, requestForm)
+      setIsRequestModalOpen(false)
       setRequestForm({ whatsapp: '', pickupAddress: '' })
       await Swal.fire({
         icon: 'success',
-        title: 'Solicitacao enviada',
-        html: `<strong>${selectedRide.driver}</strong><br />WhatsApp do motorista: ${selectedRide.whatsapp}`,
+        title: 'Pedido de carona publicado',
+        html: `Seu pedido ficou visivel para todos os usuarios na zona <strong>${selectedZone}</strong>.`,
         confirmButtonText: 'Fechar',
       })
     } catch (error) {
@@ -773,12 +783,9 @@ function RidesView({
     await toast.fire({ icon: 'success', title: 'Vaga encerrada.' })
   }
 
-  async function handleRideRequestStatus(requestId: number, status: 'Aceita' | 'Recusada') {
-    await onRespondRideRequest(requestId, status)
-    await toast.fire({
-      icon: status === 'Aceita' ? 'success' : 'info',
-      title: status === 'Aceita' ? 'Solicitacao aceita.' : 'Solicitacao recusada.',
-    })
+  async function handleAcceptRideRequest(requestId: number) {
+    await onAcceptRideRequest(requestId)
+    await toast.fire({ icon: 'success', title: 'Pedido de carona aceito.' })
   }
 
   return (
@@ -788,12 +795,15 @@ function RidesView({
           <h2>Caronas</h2>
           <p>Selecione um ponto de Curitiba no mapa para ver as caronas daquele bairro.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={onOpenRideModal}>Oferecer carona</button>
+        <div className="row-actions">
+          <button className="secondary-button" type="button" onClick={() => setIsRequestModalOpen(true)}>Solicitar carona</button>
+          <button className="secondary-button" type="button" onClick={onOpenRideModal}>Oferecer carona</button>
+        </div>
       </div>
       <div className="rides-hero">
         <div className="rides-summary-card"><span>Bairro selecionado</span><strong>{selectedZone}</strong><p>{selectedSpot?.detail ?? 'Sem caronas ativas nesta regiao.'}</p></div>
         <div className="rides-summary-card"><span>Destino padrao</span><strong>Campus UTP</strong><p>Rotas focadas no periodo noturno com ponto de encontro definido.</p></div>
-        <div className="rides-summary-card"><span>Solicitacoes recebidas</span><strong>{myRideRequests.length}</strong><p>Pedidos enviados para as caronas que voce publicou.</p></div>
+        <div className="rides-summary-card"><span>Pedidos publicos</span><strong>{openRideRequests.length}</strong><p>Solicitacoes visiveis para todos os usuarios.</p></div>
       </div>
       <div className="rides-grid">
         <div className="map-card map-card-enhanced">
@@ -805,7 +815,7 @@ function RidesView({
             <iframe title="Mapa de Curitiba" src="https://www.openstreetmap.org/export/embed.html?bbox=-49.42%2C-25.62%2C-49.17%2C-25.35&layer=mapnik&marker=-25.44%2C-49.27" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
           </div>
           <div className="hotspot-list hotspot-list-enhanced">
-            {rideHotspots.map((spot) => (
+            {safeRideHotspots.map((spot) => (
               <button key={spot.id} type="button" className={`hotspot-item${selectedZone === spot.id ? ' is-active' : ''}`} onClick={() => setSelectedZone(spot.id)}>
                 <strong>{spot.name}</strong>
                 <span>{spot.detail}</span>
@@ -837,7 +847,7 @@ function RidesView({
                     <button type="button" onClick={() => void handleCloseRide(ride)}>Encerrar vaga</button>
                   </div>
                 ) : (
-                  <button className="primary-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleRideRequest(ride)}>Solicitar vaga</button>
+                  <button className="primary-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleTalkToDriver(ride)}>Chamar no WhatsApp</button>
                 )}
               </article>
             ))}
@@ -847,39 +857,54 @@ function RidesView({
       </div>
       <section className="moderation-card database-focus-card">
         <div className="moderation-card-header">
-          <div><h3>Solicitacoes recebidas</h3><p>Gerencie os pedidos enviados para as caronas que voce publicou.</p></div>
+          <div><h3>Pedidos publicos de carona</h3><p>Solicitacoes abertas para todos os usuarios visualizarem e atenderem.</p></div>
         </div>
         <div className="database-table">
-          <div className="database-table-head"><span>Carona</span><span>WhatsApp</span><span>Endereco</span><span>Status</span><span>Data</span><span>Acoes</span></div>
-          {myRideRequests.map((request) => (
+          <div className="database-table-head"><span>Zona</span><span>WhatsApp</span><span>Endereco</span><span>Status</span><span>Data</span><span>Acoes</span></div>
+          {safeRideRequestsInbox.map((request) => (
             <div key={request.id} className="database-table-row">
-              <span>{request.rideTitle}</span>
+              <span>{request.zone}</span>
               <span>{request.requesterWhatsapp}</span>
               <span>{request.pickupAddress}</span>
-              <span>{request.status}</span>
+              <span>{request.status}{request.acceptedByName ? ` · ${request.acceptedByName}` : ''}</span>
               <span>{request.createdAt}</span>
               <div className="row-actions">
-                <button type="button" onClick={() => void handleRideRequestStatus(request.id, 'Aceita')}>Aceitar</button>
-                <button type="button" onClick={() => void handleRideRequestStatus(request.id, 'Recusada')}>Recusar</button>
+                {request.status === 'Aberto' && request.requesterId !== currentUserId ? (
+                  <button type="button" onClick={() => void handleAcceptRideRequest(request.id)}>Posso atender</button>
+                ) : request.requesterId === currentUserId ? (
+                  <span>Seu pedido</span>
+                ) : (
+                  <span>Atendido</span>
+                )}
               </div>
             </div>
           ))}
-          {myRideRequests.length === 0 ? <div className="database-table-row"><span>Nenhuma</span><span>Sem pedidos</span><span>Ainda nao houve solicitacoes</span><span>-</span><span>-</span><span>-</span></div> : null}
+          {safeRideRequestsInbox.length === 0 ? <div className="database-table-row"><span>Nenhuma</span><span>Sem pedidos</span><span>Ainda nao houve solicitacoes</span><span>-</span><span>-</span><span>-</span></div> : null}
         </div>
       </section>
-      {selectedRide ? (
-        <div className="details-modal-backdrop" onClick={() => setSelectedRide(null)}>
+      {myOpenRideRequests.length > 0 ? (
+        <section className="moderation-card">
+          <div className="moderation-card-header">
+            <div><h3>Meus pedidos abertos</h3><p>Pedidos de carona que voce publicou e ainda estao aguardando alguem atender.</p></div>
+          </div>
+          <div className="report-list">
+            {myOpenRideRequests.map((request) => (
+              <article key={request.id} className="report-item"><strong>{request.zone}</strong><p>{request.pickupAddress}</p><p>{request.requesterWhatsapp}</p></article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {isRequestModalOpen ? (
+        <div className="details-modal-backdrop" onClick={() => setIsRequestModalOpen(false)}>
           <div className="details-modal publish-modal" onClick={(event) => event.stopPropagation()}>
             <div className="details-modal-header">
-              <div><span className="detail-tag">Solicitar carona</span><h3>{selectedRide.title}</h3></div>
-              <button className="ghost-button" type="button" onClick={() => setSelectedRide(null)}>Fechar</button>
+              <div><span className="detail-tag">Pedir carona</span><h3>Solicitar carona para a zona {selectedZone}</h3></div>
+              <button className="ghost-button" type="button" onClick={() => setIsRequestModalOpen(false)}>Fechar</button>
             </div>
             <form className="publish-form" onSubmit={(event) => void handleSubmitRideRequest(event)}>
               <div className="lost-details-grid">
-                <div><span className="detail-label">Motorista</span><strong>{selectedRide.driver}</strong></div>
-                <div><span className="detail-label">WhatsApp do motorista</span><strong>{selectedRide.whatsapp}</strong></div>
-                <div><span className="detail-label">Ponto atual</span><strong>{selectedRide.meeting}</strong></div>
-                <div><span className="detail-label">Veiculo</span><strong>{selectedRide.vehicle}</strong></div>
+                <div><span className="detail-label">Zona desejada</span><strong>{selectedZone}</strong></div>
+                <div><span className="detail-label">Fluxo</span><strong>Seu pedido ficara visivel para todos os usuarios.</strong></div>
               </div>
               <label className="form-field">
                 <span>Seu WhatsApp</span>
@@ -890,8 +915,8 @@ function RidesView({
                 <textarea rows={4} placeholder="Ex.: Rua X, numero Y, bairro Z" value={requestForm.pickupAddress} onChange={(event) => setRequestForm((current) => ({ ...current, pickupAddress: event.target.value }))} />
               </label>
               <div className="details-modal-footer">
-                <div><span className="detail-label">Fluxo</span><strong>O motorista vai analisar sua solicitacao e entrar em contato pelo WhatsApp.</strong></div>
-                <button className="primary-button" type="submit">Enviar solicitacao</button>
+                <div><span className="detail-label">Fluxo</span><strong>Quem puder ajudar vai ver seu endereco e seu WhatsApp para combinar a carona.</strong></div>
+                <button className="primary-button" type="submit">Publicar pedido</button>
               </div>
             </form>
           </div>
