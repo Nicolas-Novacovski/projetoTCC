@@ -7,15 +7,15 @@ const importantDeadlines = [
 ]
 
 function getDisplayName(row) {
+  if (row.nome) {
+    return row.nome
+  }
+
   if (row.login_admin) {
     return row.login_admin
   }
 
-  if (row.ra) {
-    return `Aluno ${row.ra}`
-  }
-
-  return 'Comunidade UTP'
+  return 'Estudante UTP'
 }
 
 function formatTimestamp(value) {
@@ -104,6 +104,7 @@ function mapRideRequest(row) {
   return {
     id: row.id_pedido,
     requesterId: row.id_solicitante,
+    requesterName: row.solicitante_nome,
     zone: row.zona_destino,
     pickupAddress: row.endereco_embarque,
     requesterWhatsapp: row.whatsapp_solicitante,
@@ -111,6 +112,20 @@ function mapRideRequest(row) {
     status: row.status_pedido,
     acceptedByUserId: row.id_usuario_aceitou,
     acceptedByName: row.usuario_aceitou_nome,
+    acceptedByWhatsapp: row.motorista_aceitou_whatsapp,
+    createdAt: formatTimestamp(row.data_criacao),
+  }
+}
+
+function mapRideInterest(row) {
+  return {
+    id: row.id_solicitacao,
+    rideId: row.id_carona,
+    requesterId: row.id_solicitante,
+    requesterName: row.solicitante_nome,
+    requesterWhatsapp: row.whatsapp_solicitante,
+    pickupAddress: row.endereco_embarque,
+    status: row.status_solicitacao,
     createdAt: formatTimestamp(row.data_criacao),
   }
 }
@@ -140,7 +155,11 @@ function mapCareerProfile(row) {
 }
 
 function buildHotspots(rides) {
-  const zones = ['Centro', 'Boqueirao', 'Pinheirinho', 'CIC']
+  const defaultZones = ['Centro', 'Boqueirao', 'Pinheirinho', 'CIC']
+  const dynamicZones = rides
+    .map((ride) => ride.zone?.trim())
+    .filter(Boolean)
+  const zones = [...new Set([...dynamicZones, ...defaultZones])]
 
   return zones.map((zone) => {
     const zoneRides = rides.filter((ride) => ride.zone === zone && ride.status === 'Ativa')
@@ -159,6 +178,7 @@ async function getUserById(userId) {
   const result = await pool.query(
     `
       select id_usuario, ra, login_admin, role
+      , nome
       from usuarios
       where id_usuario = $1
       limit 1
@@ -174,6 +194,7 @@ export async function loginStudent(ra, birthDate) {
   const result = await pool.query(
     `
       select id_usuario, ra, login_admin, role
+      , nome
       from usuarios
       where ra = $1
         and data_nascimento = $2::date
@@ -200,6 +221,7 @@ export async function loginAdmin(login, password) {
   const result = await pool.query(
     `
       select id_usuario, ra, login_admin, role
+      , nome
       from usuarios
       where login_admin = $1
         and senha_admin = $2
@@ -230,7 +252,7 @@ export async function getAppData(userId, role) {
     throw new Error('Usuario nao encontrado.')
   }
 
-  const [ridesResult, lostItemsResult, publicationsResult, moderationResult, reportsResult, profileResult, rideRequestsResult] =
+  const [ridesResult, lostItemsResult, publicationsResult, moderationResult, reportsResult, profileResult, rideRequestsResult, rideInterestsResult] =
     await Promise.all([
       pool.query(
         `
@@ -242,7 +264,7 @@ export async function getAppData(userId, role) {
               where s.id_carona = c.id_carona
                 and s.status_solicitacao = 'Pendente'
             ) as total_solicitacoes,
-            coalesce(nullif(u.login_admin, ''), concat('Aluno ', u.ra), 'Comunidade UTP') as motorista
+            coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as motorista
           from caronas c
           left join usuarios u on u.id_usuario = c.id_motorista
           order by c.id_carona desc
@@ -259,7 +281,7 @@ export async function getAppData(userId, role) {
         `
           select
             p.*,
-            coalesce(nullif(u.login_admin, ''), concat('Aluno ', u.ra), 'Comunidade UTP') as autor
+            coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as autor
           from publicacoes_mural p
           left join usuarios u on u.id_usuario = p.id_autor
           where ($1 = 'admin' or p.status_moderacao = 'Aprovado')
@@ -271,7 +293,7 @@ export async function getAppData(userId, role) {
         `
           select
             p.*,
-            coalesce(nullif(u.login_admin, ''), concat('Aluno ', u.ra), 'Comunidade UTP') as autor
+            coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as autor
           from publicacoes_mural p
           left join usuarios u on u.id_usuario = p.id_autor
           order by p.data_submissao desc, p.id_publicacao desc
@@ -298,10 +320,22 @@ export async function getAppData(userId, role) {
         `
           select
             p.*,
-            coalesce(nullif(u.login_admin, ''), concat('Aluno ', u.ra), 'Comunidade UTP') as usuario_aceitou_nome
+            coalesce(nullif(solicitante.nome, ''), nullif(solicitante.login_admin, ''), 'Estudante UTP') as solicitante_nome,
+            coalesce(nullif(aceitou.nome, ''), nullif(aceitou.login_admin, ''), 'Estudante UTP') as usuario_aceitou_nome
           from pedidos_caronas p
-          left join usuarios u on u.id_usuario = p.id_usuario_aceitou
+          left join usuarios solicitante on solicitante.id_usuario = p.id_solicitante
+          left join usuarios aceitou on aceitou.id_usuario = p.id_usuario_aceitou
           order by p.data_criacao desc, p.id_pedido desc
+        `,
+      ),
+      pool.query(
+        `
+          select
+            s.*,
+            coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as solicitante_nome
+          from solicitacoes_caronas s
+          left join usuarios u on u.id_usuario = s.id_solicitante
+          order by s.data_criacao desc, s.id_solicitacao desc
         `,
       ),
     ])
@@ -313,6 +347,7 @@ export async function getAppData(userId, role) {
   const reports = reportsResult.rows.map(mapReport)
   const careerProfile = mapCareerProfile(profileResult.rows[0] ?? null)
   const rideRequestsInbox = rideRequestsResult.rows.map(mapRideRequest)
+  const rideInterestsInbox = rideInterestsResult.rows.map(mapRideInterest)
 
   return {
     user: {
@@ -334,6 +369,7 @@ export async function getAppData(userId, role) {
     moderationQueue,
     reports,
     rideRequestsInbox,
+    rideInterestsInbox,
     importantDeadlines,
     careerProfile,
   }
@@ -356,6 +392,40 @@ export async function createPublication({ userId, category, title, location, des
       values ($1, $2, $3, $4, $5, 'Pendente', now())
     `,
     [userId, category, title, location || 'Central Academica UTP', description],
+  )
+
+  return getAppData(userId, 'student')
+}
+
+export async function createLostItem({
+  userId,
+  title,
+  place,
+  date,
+  status,
+  category,
+  description,
+  foundBy,
+  contact,
+}) {
+  const pool = await connectToDatabase()
+
+  await pool.query(
+    `
+      insert into achados_perdidos (
+        id_usuario_registro,
+        titulo,
+        local_encontrado,
+        data_hora,
+        status_item,
+        categoria,
+        descricao,
+        encontrado_por,
+        contato_retirada
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `,
+    [userId, title, place, date, status, category, description, foundBy, contact],
   )
 
   return getAppData(userId, 'student')
@@ -416,6 +486,43 @@ export async function createRideRequest({ zone, userId, whatsapp, pickupAddress 
   return getAppData(userId, 'student')
 }
 
+export async function createRideInterest({ rideId, userId, whatsapp, pickupAddress }) {
+  const pool = await connectToDatabase()
+
+  const existingInterest = await pool.query(
+    `
+      select id_solicitacao
+      from solicitacoes_caronas
+      where id_carona = $1
+        and id_solicitante = $2
+        and status_solicitacao = 'Pendente'
+      limit 1
+    `,
+    [rideId, userId],
+  )
+
+  if (existingInterest.rowCount) {
+    throw new Error('Voce ja declarou interesse nessa carona.')
+  }
+
+  await pool.query(
+    `
+      insert into solicitacoes_caronas (
+        id_carona,
+        id_solicitante,
+        whatsapp_solicitante,
+        endereco_embarque,
+        status_solicitacao,
+        data_criacao
+      )
+      values ($1, $2, $3, $4, 'Pendente', now())
+    `,
+    [rideId, userId, whatsapp, pickupAddress],
+  )
+
+  return getAppData(userId, 'student')
+}
+
 export async function closeRide(rideId, userId) {
   const pool = await connectToDatabase()
   const result = await pool.query(
@@ -437,6 +544,26 @@ export async function closeRide(rideId, userId) {
 
 export async function updateRideRequestStatus(requestId, userId, status) {
   const pool = await connectToDatabase()
+
+  let acceptedDriverWhatsapp = null
+
+  if (status === 'Aceito') {
+    const driverRideResult = await pool.query(
+      `
+        select whatsapp_motorista
+        from caronas
+        where id_motorista = $1
+        order by
+          case when status_carona = 'Ativa' then 0 else 1 end,
+          id_carona desc
+        limit 1
+      `,
+      [userId],
+    )
+
+    acceptedDriverWhatsapp = driverRideResult.rows[0]?.whatsapp_motorista ?? null
+  }
+
   const requestResult = await pool.query(
     `
       select id_pedido, id_solicitante
@@ -461,10 +588,11 @@ export async function updateRideRequestStatus(requestId, userId, status) {
     `
       update pedidos_caronas
       set status_pedido = $2,
-          id_usuario_aceitou = $3
+          id_usuario_aceitou = $3,
+          motorista_aceitou_whatsapp = $4
       where id_pedido = $1
     `,
-    [requestId, status, status === 'Aceito' ? userId : null],
+    [requestId, status, status === 'Aceito' ? userId : null, status === 'Aceito' ? acceptedDriverWhatsapp : null],
   )
 
   return getAppData(userId, 'student')
@@ -573,7 +701,7 @@ export async function getAdminDatabaseSnapshot(userId) {
   ] = await Promise.all([
     pool.query(
       `
-        select id_usuario, ra, login_admin, role, is_validado, data_criacao
+        select id_usuario, nome, ra, login_admin, role, is_validado, data_criacao
         from usuarios
         order by id_usuario desc
       `,
@@ -601,7 +729,7 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
-        select id_pedido, id_solicitante, zona_destino, endereco_embarque, whatsapp_solicitante, status_pedido, id_usuario_aceitou, data_criacao
+        select id_pedido, id_solicitante, zona_destino, endereco_embarque, whatsapp_solicitante, status_pedido, id_usuario_aceitou, motorista_aceitou_whatsapp, data_criacao
         from pedidos_caronas
         order by id_pedido desc
       `,

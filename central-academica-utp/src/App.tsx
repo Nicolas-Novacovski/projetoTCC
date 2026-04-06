@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import Swal from 'sweetalert2'
 import './App.css'
@@ -7,7 +7,6 @@ type UserRole = 'student' | 'admin'
 type PageView = 'home' | 'rides' | 'lostFound' | 'career' | 'mural' | 'moderation' | 'database'
 type LoginMode = 'student' | 'admin'
 type PostStatus = 'Pendente' | 'Aprovado' | 'Revisao'
-type RideZone = 'Centro' | 'Boqueirao' | 'Pinheirinho' | 'CIC'
 
 type AppUser = { id: number; role: UserRole; name: string }
 type DashboardStats = {
@@ -29,7 +28,7 @@ type ModerationPost = {
 type RideOffer = {
   id: number
   driverId: number
-  zone: RideZone
+  zone: string
   title: string
   driver: string
   time: string
@@ -40,7 +39,7 @@ type RideOffer = {
   whatsapp: string
   requestCount: number
 }
-type RideHotspot = { id: RideZone; name: RideZone; detail: string }
+type RideHotspot = { id: string; name: string; detail: string }
 type LostItem = {
   id: number
   title: string
@@ -52,9 +51,19 @@ type LostItem = {
   foundBy: string
   contact: string
 }
+type LostItemForm = {
+  title: string
+  place: string
+  date: string
+  status: string
+  category: string
+  description: string
+  foundBy: string
+  contact: string
+}
 type PublishForm = { category: string; title: string; location: string; description: string }
 type RideForm = {
-  zone: RideZone
+  zone: string
   title: string
   departureTime: string
   seats: string
@@ -89,6 +98,7 @@ type Report = { id: number; title: string; detail: string; status: string; creat
 type RideRequest = {
   id: number
   requesterId: number
+  requesterName: string
   zone: string
   requesterWhatsapp: string
   pickupAddress: string
@@ -96,6 +106,17 @@ type RideRequest = {
   status: string
   acceptedByUserId: number | null
   acceptedByName: string | null
+  acceptedByWhatsapp: string | null
+  createdAt: string
+}
+type RideInterest = {
+  id: number
+  rideId: number
+  requesterId: number
+  requesterName: string
+  requesterWhatsapp: string
+  pickupAddress: string
+  status: string
   createdAt: string
 }
 type AppData = {
@@ -108,6 +129,7 @@ type AppData = {
   moderationQueue: ModerationPost[]
   reports: Report[]
   rideRequestsInbox: RideRequest[]
+  rideInterestsInbox: RideInterest[]
   importantDeadlines: Deadline[]
   careerProfile: CareerProfile
 }
@@ -136,6 +158,16 @@ const emptyCareerProfile: CareerProfile = {
   salaryExpectation: '',
   workModel: 'Hibrido',
   preferredCity: '',
+}
+const emptyLostItemForm: LostItemForm = {
+  title: '',
+  place: '',
+  date: '',
+  status: 'Aguardando retirada',
+  category: 'Documentos',
+  description: '',
+  foundBy: '',
+  contact: '',
 }
 
 const toast = Swal.mixin({
@@ -203,6 +235,81 @@ function showFeatureAlert(title: string, text: string) {
   return Swal.fire({ icon: 'info', title, text, confirmButtonText: 'Entendi' })
 }
 
+function buildWhatsAppLink(phone: string, message: string) {
+  const digitsOnly = phone.replace(/\D/g, '')
+
+  if (!digitsOnly) {
+    return null
+  }
+
+  const normalizedPhone =
+    digitsOnly.length === 10 || digitsOnly.length === 11
+      ? `55${digitsOnly}`
+      : digitsOnly
+
+  return `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(message)}`
+}
+
+function renderWhatsAppIconMarkup() {
+  return `
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 4a8 8 0 0 0-6.9 12l-1.1 4 4.1-1A8 8 0 1 0 12 4Z" />
+      <path d="M9.3 8.9c.2-.4.4-.4.7-.4h.6c.2 0 .4 0 .5.4l.5 1.5c.1.3 0 .5-.1.7l-.4.5c-.1.1-.2.3-.1.5.3.7 1 1.8 2.2 2.4.2.1.4.1.5 0l.6-.7c.2-.2.4-.2.6-.1l1.4.7c.2.1.4.2.4.5v.5c0 .3-.2.5-.4.7-.4.3-1 .5-1.7.3-1-.2-2.4-.8-3.7-2.2-1.6-1.5-2.3-3.1-2.5-4.2-.1-.7.1-1.3.4-1.6Z" />
+    </svg>
+  `
+}
+
+function showWhatsAppContactModal({
+  title,
+  personName,
+  phone,
+  detail,
+  buttonLabel,
+  message,
+}: {
+  title: string
+  personName: string
+  phone: string
+  detail: string
+  buttonLabel: string
+  message: string
+}) {
+  const whatsappLink = buildWhatsAppLink(phone, message)
+
+  return Swal.fire({
+    confirmButtonText: 'Fechar',
+    buttonsStyling: false,
+    customClass: {
+      popup: 'whatsapp-popup',
+      confirmButton: 'whatsapp-popup-confirm',
+    },
+    html: `
+      <div class="whatsapp-modal-shell">
+        <span class="whatsapp-modal-badge">Contato rapido</span>
+        <h2 class="whatsapp-modal-heading">${title}</h2>
+        <div class="whatsapp-modal-card">
+          <div class="whatsapp-modal-hero">
+            <span class="whatsapp-modal-hero-icon">${renderWhatsAppIconMarkup()}</span>
+            <div>
+              <strong>${personName}</strong>
+              <span>${phone}</span>
+            </article>
+          </div>
+          <div class="whatsapp-modal-detail">${detail}</div>
+          ${
+            whatsappLink
+              ? `<a class="whatsapp-shortcut whatsapp-shortcut-large" href="${whatsappLink}" target="_blank" rel="noopener noreferrer" aria-label="${buttonLabel}">
+                  <span class="whatsapp-shortcut-icon">${renderWhatsAppIconMarkup()}</span>
+                  <span>${buttonLabel}</span>
+                </a>`
+              : '<p class="whatsapp-modal-warning">Numero de WhatsApp invalido para redirecionamento.</p>'
+          }
+        </div>
+      </div>
+    `,
+  })
+}
+
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [currentView, setCurrentView] = useState<PageView>('mural')
@@ -218,8 +325,11 @@ function App() {
   const [isSavingProfile, setIsSavingProfile] = useState(false)
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
   const [isRideModalOpen, setIsRideModalOpen] = useState(false)
+  const [isLostItemModalOpen, setIsLostItemModalOpen] = useState(false)
   const [adminSnapshot, setAdminSnapshot] = useState<AdminDatabaseSnapshot | null>(null)
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false)
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const [publishForm, setPublishForm] = useState<PublishForm>({
     category: 'Vaga',
     title: '',
@@ -227,7 +337,7 @@ function App() {
     description: '',
   })
   const [rideForm, setRideForm] = useState<RideForm>({
-    zone: 'Centro',
+    zone: '',
     title: '',
     departureTime: '',
     seats: '',
@@ -236,10 +346,27 @@ function App() {
     whatsapp: '',
   })
   const [careerProfile, setCareerProfile] = useState<CareerProfile>(emptyCareerProfile)
+  const [lostItemForm, setLostItemForm] = useState<LostItemForm>(emptyLostItemForm)
 
   useEffect(() => {
     if (appData) setCareerProfile(appData.careerProfile)
   }, [appData])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false)
+      }
+    }
+
+    if (isProfileMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isProfileMenuOpen])
 
   async function refreshAppData(user = sessionUser) {
     if (!user) return
@@ -431,7 +558,7 @@ function App() {
       setAppData(response.data)
       setIsRideModalOpen(false)
       setRideForm({
-        zone: 'Centro',
+        zone: '',
         title: '',
         departureTime: '',
         seats: '',
@@ -449,6 +576,59 @@ function App() {
         icon: 'error',
         title: 'Falha ao publicar carona',
         text: error instanceof Error ? error.message : 'Nao foi possivel salvar a carona.',
+        confirmButtonText: 'Fechar',
+      })
+    }
+  }
+
+  async function handleLostItemSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!sessionUser) return
+
+    if (
+      !lostItemForm.title.trim() ||
+      !lostItemForm.place.trim() ||
+      !lostItemForm.date.trim() ||
+      !lostItemForm.category.trim() ||
+      !lostItemForm.description.trim() ||
+      !lostItemForm.foundBy.trim() ||
+      !lostItemForm.contact.trim()
+    ) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Campos obrigatorios',
+        text: 'Preencha todos os campos para registrar o item em achados e perdidos.',
+        confirmButtonText: 'Corrigir',
+      })
+      return
+    }
+
+    try {
+      const response = await requestJson<{ data: AppData }>('/api/lost-items', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: sessionUser.id,
+          ...lostItemForm,
+        }),
+      })
+
+      setAppData(response.data)
+      setIsLostItemModalOpen(false)
+      setLostItemForm({
+        ...emptyLostItemForm,
+        foundBy: sessionUser.name,
+      })
+
+      await toast.fire({
+        icon: 'success',
+        title: 'Item registrado com sucesso.',
+      })
+    } catch (error) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Falha ao registrar item',
+        text: error instanceof Error ? error.message : 'Nao foi possivel salvar o item agora.',
         confirmButtonText: 'Fechar',
       })
     }
@@ -562,11 +742,33 @@ function App() {
               <BellIcon />
               <span className="notification-dot" aria-hidden="true" />
             </button>
-            <button className="session-button" type="button" onClick={() => void handleLogout()}>Sair</button>
+            <div className="profile-menu" ref={profileMenuRef}>
+              <button
+                className="profile-button"
+                type="button"
+                aria-label="Abrir menu do usuario"
+                aria-expanded={isProfileMenuOpen}
+                onClick={() => setIsProfileMenuOpen((current) => !current)}
+              >
+                <span className="profile-button-name">{sessionUser.name}</span>
+                <span className="profile-avatar"><UserCircleIcon /></span>
+              </button>
+              {isProfileMenuOpen ? (
+                <div className="profile-dropdown">
+                  <div className="profile-dropdown-header">
+                    <strong>{sessionUser.name}</strong>
+                    <span>{sessionUser.role === 'admin' ? 'Administrador' : 'Aluno'}</span>
+                  </div>
+                  <button className="profile-dropdown-action" type="button" onClick={() => void handleLogout()}>
+                    Sair
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </header>
         {currentView === 'home' ? <HomeView dashboard={appData.dashboard} /> : null}
-        {currentView === 'rides' ? <RidesView currentUserId={sessionUser.id} rides={appData.rides ?? []} rideHotspots={appData.rideHotspots ?? []} rideRequestsInbox={appData.rideRequestsInbox ?? []} onOpenRideModal={() => setIsRideModalOpen(true)} onCreateRideRequest={async (zone, payload) => {
+        {currentView === 'rides' ? <RidesView currentUserId={sessionUser.id} rides={appData.rides ?? []} rideHotspots={appData.rideHotspots ?? []} rideRequestsInbox={appData.rideRequestsInbox ?? []} rideInterestsInbox={appData.rideInterestsInbox ?? []} onOpenRideModal={() => setIsRideModalOpen(true)} onCreateRideRequest={async (zone, payload) => {
           const response = await requestJson<{ data: AppData }>(`/api/ride-requests`, {
             method: 'POST',
             body: JSON.stringify({
@@ -583,6 +785,16 @@ function App() {
             body: JSON.stringify({ userId: sessionUser.id }),
           })
           setAppData(response.data)
+        }} onDeclareRideInterest={async (rideId, payload) => {
+          const response = await requestJson<{ data: AppData }>(`/api/rides/${rideId}/interests`, {
+            method: 'POST',
+            body: JSON.stringify({
+              userId: sessionUser.id,
+              whatsapp: payload.whatsapp,
+              pickupAddress: payload.pickupAddress,
+            }),
+          })
+          setAppData(response.data)
         }} onAcceptRideRequest={async (requestId) => {
           const response = await requestJson<{ data: AppData }>(`/api/ride-requests/${requestId}/status`, {
             method: 'PATCH',
@@ -590,7 +802,13 @@ function App() {
           })
           setAppData(response.data)
         }} /> : null}
-        {currentView === 'lostFound' ? <LostFoundView lostItems={appData.lostItems} /> : null}
+        {currentView === 'lostFound' ? <LostFoundView lostItems={appData.lostItems} onOpenRegisterModal={() => {
+          setLostItemForm((current) => ({
+            ...current,
+            foundBy: current.foundBy || sessionUser.name,
+          }))
+          setIsLostItemModalOpen(true)
+        }} /> : null}
         {currentView === 'career' ? <CareerView careerProfile={careerProfile} isSaving={isSavingProfile} onCareerChange={setCareerProfile} onSave={() => void handleSaveProfile()} /> : null}
         {currentView === 'mural' ? <MuralView userRole={sessionUser.role} muralPosts={appData.muralPosts} importantDeadlines={appData.importantDeadlines} onApply={(title) => void handleApply(title)} onOpenPublishModal={() => setIsPublishModalOpen(true)} /> : null}
         {currentView === 'moderation' ? <ModerationView moderationQueue={appData.moderationQueue} reports={appData.reports} dashboard={appData.dashboard} onRefresh={() => void refreshAppData()} onModerate={(status, item) => void handleModerationAction(status, item)} /> : null}
@@ -629,12 +847,12 @@ function App() {
               <div className="publish-grid">
                 <label className="form-field">
                   <span>Bairro / zona</span>
-                  <select value={rideForm.zone} onChange={(event) => setRideForm((current) => ({ ...current, zone: event.target.value as RideZone }))}>
-                    <option value="Centro">Centro</option>
-                    <option value="Boqueirao">Boqueirao</option>
-                    <option value="Pinheirinho">Pinheirinho</option>
-                    <option value="CIC">CIC</option>
-                  </select>
+                  <input
+                    type="text"
+                    placeholder="Ex.: Santa Felicidade"
+                    value={rideForm.zone}
+                    onChange={(event) => setRideForm((current) => ({ ...current, zone: event.target.value }))}
+                  />
                 </label>
                 <label className="form-field">
                   <span>Horario de saida</span>
@@ -651,8 +869,8 @@ function App() {
                   <input type="text" placeholder="Ex.: 3 vagas" value={rideForm.seats} onChange={(event) => setRideForm((current) => ({ ...current, seats: event.target.value }))} />
                 </label>
                 <label className="form-field">
-                  <span>Ponto de encontro</span>
-                  <input type="text" placeholder="Ex.: Terminal do Boqueirao" value={rideForm.meetingPoint} onChange={(event) => setRideForm((current) => ({ ...current, meetingPoint: event.target.value }))} />
+                  <span>Endereco</span>
+                  <input type="text" placeholder="Ex.: Rua Joao Negrrao, 120" value={rideForm.meetingPoint} onChange={(event) => setRideForm((current) => ({ ...current, meetingPoint: event.target.value }))} />
                 </label>
               </div>
               <label className="form-field">
@@ -666,6 +884,52 @@ function App() {
               <div className="details-modal-footer">
                 <div><span className="detail-label">Destino</span><strong>Campus UTP</strong></div>
                 <button className="primary-button" type="submit">Publicar carona</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+      {isLostItemModalOpen ? (
+        <div className="details-modal-backdrop" onClick={() => setIsLostItemModalOpen(false)}>
+          <div className="details-modal publish-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="details-modal-header">
+              <div><span className="detail-tag">Achados e Perdidos</span><h3>Registrar item</h3></div>
+              <button className="ghost-button" type="button" onClick={() => setIsLostItemModalOpen(false)}>Fechar</button>
+            </div>
+            <form className="publish-form" onSubmit={(event) => void handleLostItemSubmit(event)}>
+              <div className="publish-grid">
+                <label className="form-field">
+                  <span>Categoria</span>
+                  <select value={lostItemForm.category} onChange={(event) => setLostItemForm((current) => ({ ...current, category: event.target.value }))}>
+                    <option>Documentos</option>
+                    <option>Eletronicos</option>
+                    <option>Mochilas</option>
+                    <option>Acessorios</option>
+                    <option>Outros</option>
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Status</span>
+                  <select value={lostItemForm.status} onChange={(event) => setLostItemForm((current) => ({ ...current, status: event.target.value }))}>
+                    <option>Aguardando retirada</option>
+                    <option>Encontrado na recepcao</option>
+                    <option>Encaminhado ao apoio</option>
+                  </select>
+                </label>
+              </div>
+              <label className="form-field"><span>Titulo</span><input type="text" placeholder="Ex.: Carteira preta com documentos" value={lostItemForm.title} onChange={(event) => setLostItemForm((current) => ({ ...current, title: event.target.value }))} /></label>
+              <div className="publish-grid">
+                <label className="form-field"><span>Local encontrado</span><input type="text" placeholder="Ex.: Bloco B - Sala 12" value={lostItemForm.place} onChange={(event) => setLostItemForm((current) => ({ ...current, place: event.target.value }))} /></label>
+                <label className="form-field"><span>Data ou horario</span><input type="text" placeholder="Ex.: Hoje, 18:20" value={lostItemForm.date} onChange={(event) => setLostItemForm((current) => ({ ...current, date: event.target.value }))} /></label>
+              </div>
+              <label className="form-field"><span>Descricao</span><textarea rows={5} placeholder="Descreva o item, caracteristicas e qualquer detalhe util para identificacao." value={lostItemForm.description} onChange={(event) => setLostItemForm((current) => ({ ...current, description: event.target.value }))} /></label>
+              <div className="publish-grid">
+                <label className="form-field"><span>Registrado por</span><input type="text" value={lostItemForm.foundBy} onChange={(event) => setLostItemForm((current) => ({ ...current, foundBy: event.target.value }))} /></label>
+                <label className="form-field"><span>Contato para retirada</span><input type="text" placeholder="Ex.: secretaria@utp.br ou (41) 99999-1234" value={lostItemForm.contact} onChange={(event) => setLostItemForm((current) => ({ ...current, contact: event.target.value }))} /></label>
+              </div>
+              <div className="details-modal-footer">
+                <div><span className="detail-label">Fluxo</span><strong>O item sera exibido imediatamente na lista de achados e perdidos.</strong></div>
+                <button className="primary-button" type="submit">Registrar item</button>
               </div>
             </form>
           </div>
@@ -693,44 +957,60 @@ function RidesView({
   rides,
   rideHotspots,
   rideRequestsInbox,
+  rideInterestsInbox,
   onOpenRideModal,
   onCreateRideRequest,
   onCloseRide,
+  onDeclareRideInterest,
   onAcceptRideRequest,
 }: {
   currentUserId: number
   rides: RideOffer[]
   rideHotspots: RideHotspot[]
   rideRequestsInbox: RideRequest[]
+  rideInterestsInbox: RideInterest[]
   onOpenRideModal: () => void
-  onCreateRideRequest: (zone: RideZone, payload: RideRequestForm) => Promise<void>
+  onCreateRideRequest: (zone: string, payload: RideRequestForm) => Promise<void>
   onCloseRide: (rideId: number) => Promise<void>
+  onDeclareRideInterest: (rideId: number, payload: RideRequestForm) => Promise<void>
   onAcceptRideRequest: (requestId: number) => Promise<void>
 }) {
   const safeRides = rides ?? []
-  const safeRideHotspots = rideHotspots ?? []
   const safeRideRequestsInbox = rideRequestsInbox ?? []
-  const [selectedZone, setSelectedZone] = useState<RideZone>(safeRideHotspots[0]?.id ?? 'Centro')
+  const safeRideInterestsInbox = rideInterestsInbox ?? []
+  const availableZones = [...new Set((rideHotspots ?? []).map((spot) => spot.id).filter(Boolean))]
+  const [selectedZone, setSelectedZone] = useState<string>(availableZones[0] ?? 'Centro')
+  const [rideSearch, setRideSearch] = useState('')
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [requestForm, setRequestForm] = useState<RideRequestForm>({ whatsapp: '', pickupAddress: '' })
 
   useEffect(() => {
-    if (!safeRideHotspots.some((spot) => spot.id === selectedZone) && safeRideHotspots[0]) {
-      setSelectedZone(safeRideHotspots[0].id)
+    if (!availableZones.includes(selectedZone) && availableZones[0]) {
+      setSelectedZone(availableZones[0])
     }
-  }, [safeRideHotspots, selectedZone])
+  }, [availableZones, selectedZone])
 
-  const filteredRides = safeRides.filter((ride) => ride.zone === selectedZone)
-  const selectedSpot = safeRideHotspots.find((spot) => spot.id === selectedZone)
+  const normalizedSearch = rideSearch.trim().toLowerCase()
+  const filteredRides = safeRides.filter((ride) => {
+    if (!normalizedSearch) {
+      return true
+    }
+
+    return [ride.zone, ride.title, ride.driver, ride.vehicle]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(normalizedSearch))
+  })
   const openRideRequests = safeRideRequestsInbox.filter((request) => request.status === 'Aberto')
-  const myOpenRideRequests = safeRideRequestsInbox.filter((request) => request.requesterId === currentUserId)
+  const myRideRequests = safeRideRequestsInbox.filter((request) => request.requesterId === currentUserId)
 
   async function handleTalkToDriver(ride: RideOffer) {
-    await Swal.fire({
-      icon: 'info',
+    await showWhatsAppContactModal({
       title: 'Contato do motorista',
-      html: `<strong>${ride.driver}</strong><br />WhatsApp: ${ride.whatsapp}<br />Ponto sugerido: ${ride.meeting}`,
-      confirmButtonText: 'Fechar',
+      personName: ride.driver,
+      phone: `WhatsApp: ${ride.whatsapp}`,
+      detail: `Endereco informado: ${ride.meeting}`,
+      buttonLabel: 'Abrir conversa no WhatsApp',
+      message: `Oi, ${ride.driver}! Vi sua carona "${ride.title}" no portal da UTP e gostaria de combinar.`,
     })
   }
 
@@ -783,9 +1063,71 @@ function RidesView({
     await toast.fire({ icon: 'success', title: 'Vaga encerrada.' })
   }
 
-  async function handleAcceptRideRequest(requestId: number) {
-    await onAcceptRideRequest(requestId)
-    await toast.fire({ icon: 'success', title: 'Pedido de carona aceito.' })
+  async function handleAcceptRideRequest(request: RideRequest) {
+    await onAcceptRideRequest(request.id)
+
+    await showWhatsAppContactModal({
+      title: 'Pedido de carona aceito',
+      personName: request.requesterName,
+      phone: `WhatsApp do solicitante: ${request.requesterWhatsapp}`,
+      detail: `Endereco informado: ${request.pickupAddress}`,
+      buttonLabel: 'Conversar no WhatsApp',
+      message: `Oi, ${request.requesterName}! Vi seu pedido de carona para ${request.zone} no portal da UTP e posso atender.`,
+    })
+  }
+
+  async function handleDeclareRideInterest(ride: RideOffer) {
+    const result = await Swal.fire({
+      title: 'Declarar interesse na vaga',
+      html: `
+        <div class="swal-inline-form">
+          <input id="ride-interest-whatsapp" class="swal2-input" placeholder="Seu WhatsApp" />
+          <textarea id="ride-interest-address" class="swal2-textarea" placeholder="Seu endereco ou ponto de embarque"></textarea>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Enviar interesse',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const whatsapp = (document.getElementById('ride-interest-whatsapp') as HTMLInputElement | null)?.value.trim() ?? ''
+        const pickupAddress = (document.getElementById('ride-interest-address') as HTMLTextAreaElement | null)?.value.trim() ?? ''
+
+        if (!whatsapp || !pickupAddress) {
+          Swal.showValidationMessage('Preencha seu WhatsApp e endereco para registrar o interesse.')
+          return null
+        }
+
+        return { whatsapp, pickupAddress }
+      },
+    })
+
+    if (!result.isConfirmed || !result.value) {
+      return
+    }
+
+    await onDeclareRideInterest(ride.id, result.value)
+    await toast.fire({ icon: 'success', title: 'Interesse enviado ao motorista.' })
+  }
+
+  async function handleContactAcceptedDriver(request: RideRequest) {
+    if (!request.acceptedByWhatsapp || !request.acceptedByName) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Contato ainda indisponivel',
+        text: 'O motorista ainda nao informou um numero de WhatsApp para essa carona.',
+        confirmButtonText: 'Fechar',
+      })
+      return
+    }
+
+    await showWhatsAppContactModal({
+      title: 'Motorista que aceitou',
+      personName: request.acceptedByName,
+      phone: `WhatsApp do motorista: ${request.acceptedByWhatsapp}`,
+      detail: `Zona solicitada: ${request.zone} • Embarque: ${request.pickupAddress}`,
+      buttonLabel: 'Falar com o motorista',
+      message: `Oi, ${request.acceptedByName}! Vi que voce aceitou meu pedido de carona para ${request.zone} no portal da UTP.`,
+    })
   }
 
   return (
@@ -793,38 +1135,50 @@ function RidesView({
       <div className="page-heading">
         <div>
           <h2>Caronas</h2>
-          <p>Selecione um ponto de Curitiba no mapa para ver as caronas daquele bairro.</p>
+          <p>Consulte todas as caronas abertas e use a busca para encontrar bairros, motoristas ou rotas.</p>
         </div>
         <div className="row-actions">
           <button className="secondary-button" type="button" onClick={() => setIsRequestModalOpen(true)}>Solicitar carona</button>
           <button className="secondary-button" type="button" onClick={onOpenRideModal}>Oferecer carona</button>
         </div>
       </div>
+      <article className="rides-disclaimer" role="note" aria-label="Aviso importante sobre caronas">
+        <div className="rides-disclaimer-icon"><InfoIcon /></div>
+        <div className="rides-disclaimer-content">
+          <strong>Aviso importante</strong>
+          <p>
+            A plataforma de caronas existe para aproximar alunos que oferecem e procuram trajetos.
+            Horarios, valores, pontos de encontro e demais combinacoes sao definidos diretamente entre
+            os participantes, sem intermediacao ou responsabilidade da instituicao.
+          </p>
+        </div>
+      </article>
       <div className="rides-hero">
-        <div className="rides-summary-card"><span>Bairro selecionado</span><strong>{selectedZone}</strong><p>{selectedSpot?.detail ?? 'Sem caronas ativas nesta regiao.'}</p></div>
+        <div className="rides-summary-card"><span>Rotas abertas</span><strong>{safeRides.filter((ride) => ride.status === 'Ativa').length}</strong><p>Caronas disponiveis no sistema neste momento.</p></div>
         <div className="rides-summary-card"><span>Destino padrao</span><strong>Campus UTP</strong><p>Rotas focadas no periodo noturno com ponto de encontro definido.</p></div>
         <div className="rides-summary-card"><span>Pedidos publicos</span><strong>{openRideRequests.length}</strong><p>Solicitacoes visiveis para todos os usuarios.</p></div>
       </div>
       <div className="rides-grid">
         <div className="map-card map-card-enhanced">
           <div className="map-card-header">
-            <div><h3>Mapa de Curitiba</h3><p>Use os pontos abaixo para filtrar as caronas e visualizar a regiao no mapa.</p></div>
-            <span className="map-legend">Regiao atual: {selectedZone}</span>
+            <div><h3>Mapa de Curitiba</h3><p>Visualizacao de referencia da cidade para orientar os trajetos e bairros atendidos.</p></div>
+            <span className="map-legend">Busca atual: {rideSearch || 'Todas as caronas'}</span>
           </div>
           <div className="real-map-frame">
             <iframe title="Mapa de Curitiba" src="https://www.openstreetmap.org/export/embed.html?bbox=-49.42%2C-25.62%2C-49.17%2C-25.35&layer=mapnik&marker=-25.44%2C-49.27" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
           </div>
-          <div className="hotspot-list hotspot-list-enhanced">
-            {safeRideHotspots.map((spot) => (
-              <button key={spot.id} type="button" className={`hotspot-item${selectedZone === spot.id ? ' is-active' : ''}`} onClick={() => setSelectedZone(spot.id)}>
-                <strong>{spot.name}</strong>
-                <span>{spot.detail}</span>
-              </button>
-            ))}
+          <div className="rides-search-bar">
+            <input
+              type="text"
+              placeholder="Buscar por bairro, motorista, rota ou veiculo"
+              value={rideSearch}
+              onChange={(event) => setRideSearch(event.target.value)}
+            />
+            <span>{filteredRides.length} resultado(s)</span>
           </div>
         </div>
         <div className="rides-list-panel">
-          <div className="rides-list-header"><h3>Rotas disponiveis</h3><p>{selectedZone} para Campus UTP</p></div>
+          <div className="rides-list-header"><h3>Rotas disponiveis</h3><p>{normalizedSearch ? `Resultados para "${rideSearch}"` : 'Todas as caronas abertas e cadastradas'}</p></div>
           <div className="rides-list">
             {filteredRides.map((ride) => (
               <article key={ride.id} className="ride-card ride-card-enhanced">
@@ -834,7 +1188,7 @@ function RidesView({
                 </div>
                 <div className="ride-meta-grid">
                   <div><span className="ride-meta-label">Saida</span><strong>{ride.time}</strong></div>
-                  <div><span className="ride-meta-label">Encontro</span><strong>{ride.meeting}</strong></div>
+                  <div><span className="ride-meta-label">Endereco</span><strong>{ride.meeting}</strong></div>
                   <div><span className="ride-meta-label">Veiculo</span><strong>{ride.vehicle}</strong></div>
                 </div>
                 <div className="ride-meta-grid">
@@ -847,49 +1201,107 @@ function RidesView({
                     <button type="button" onClick={() => void handleCloseRide(ride)}>Encerrar vaga</button>
                   </div>
                 ) : (
-                  <button className="primary-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleTalkToDriver(ride)}>Chamar no WhatsApp</button>
+                  <div className="ride-contact-actions">
+                    <button className="primary-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleTalkToDriver(ride)}>Entrar em contato com motorista</button>
+                    <button className="interest-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleDeclareRideInterest(ride)}>Declarar interesse</button>
+                  </div>
                 )}
+                {ride.driverId === currentUserId ? (
+                  <div className="ride-interest-list">
+                    <span className="ride-meta-label">Interessados</span>
+                    {safeRideInterestsInbox.filter((interest) => interest.rideId === ride.id).length > 0 ? (
+                      safeRideInterestsInbox
+                        .filter((interest) => interest.rideId === ride.id)
+                        .map((interest) => (
+                          <div key={interest.id} className="ride-interest-item">
+                            <strong>{interest.requesterName}</strong>
+                            <span>{interest.requesterWhatsapp}</span>
+                            <span>{interest.pickupAddress}</span>
+                          </div>
+                        ))
+                    ) : (
+                      <p>Ninguem declarou interesse nessa vaga ainda.</p>
+                    )}
+                  </div>
+                ) : null}
               </article>
             ))}
-            {filteredRides.length === 0 ? <article className="ride-card ride-card-enhanced"><h3>Nenhuma carona nessa regiao</h3><p>Escolha outro bairro no mapa ou publique uma nova rota.</p></article> : null}
+            {filteredRides.length === 0 ? <article className="ride-card ride-card-enhanced"><h3>Nenhuma carona encontrada</h3><p>Tente buscar por outro bairro, motorista ou veiculo.</p></article> : null}
           </div>
         </div>
       </div>
-      <section className="moderation-card database-focus-card">
+      <section className="rides-list-panel ride-requests-panel">
         <div className="moderation-card-header">
           <div><h3>Pedidos publicos de carona</h3><p>Solicitacoes abertas para todos os usuarios visualizarem e atenderem.</p></div>
         </div>
-        <div className="database-table">
-          <div className="database-table-head"><span>Zona</span><span>WhatsApp</span><span>Endereco</span><span>Status</span><span>Data</span><span>Acoes</span></div>
+        <div className="ride-requests-list">
           {safeRideRequestsInbox.map((request) => (
-            <div key={request.id} className="database-table-row">
-              <span>{request.zone}</span>
-              <span>{request.requesterWhatsapp}</span>
-              <span>{request.pickupAddress}</span>
-              <span>{request.status}{request.acceptedByName ? ` · ${request.acceptedByName}` : ''}</span>
-              <span>{request.createdAt}</span>
+            <article key={request.id} className="ride-request-card">
+              <div className="ride-request-card-header">
+                <div>
+                  <strong>{request.zone}</strong>
+                  <p>{request.createdAt}</p>
+                </div>
+                <span className={`status-pill ${request.status === 'Aceito' ? 'status-approved' : 'status-pending'}`}>
+                  {request.status}
+                </span>
+              </div>
+              <div className="ride-request-meta">
+                <div><span className="ride-meta-label">Solicitante</span><strong>{request.requesterName}</strong></div>
+                <div><span className="ride-meta-label">WhatsApp</span><strong>{request.requesterWhatsapp}</strong></div>
+                <div><span className="ride-meta-label">Endereco</span><strong>{request.pickupAddress}</strong></div>
+                <div><span className="ride-meta-label">Atendido por</span><strong>{request.acceptedByName ?? 'Aguardando motorista'}</strong></div>
+              </div>
               <div className="row-actions">
                 {request.status === 'Aberto' && request.requesterId !== currentUserId ? (
-                  <button type="button" onClick={() => void handleAcceptRideRequest(request.id)}>Posso atender</button>
+                  <div className="ride-contact-actions">
+                    <button type="button" onClick={() => void handleAcceptRideRequest(request)}>Aceitar carona</button>
+                  </div>
                 ) : request.requesterId === currentUserId ? (
                   <span>Seu pedido</span>
                 ) : (
                   <span>Atendido</span>
                 )}
               </div>
-            </div>
+            </article>
           ))}
-          {safeRideRequestsInbox.length === 0 ? <div className="database-table-row"><span>Nenhuma</span><span>Sem pedidos</span><span>Ainda nao houve solicitacoes</span><span>-</span><span>-</span><span>-</span></div> : null}
+          {safeRideRequestsInbox.length === 0 ? <article className="ride-request-card"><strong>Nenhum pedido aberto</strong><p>Assim que um aluno publicar uma solicitacao, ela aparecera aqui.</p></article> : null}
         </div>
       </section>
-      {myOpenRideRequests.length > 0 ? (
+      {myRideRequests.length > 0 ? (
         <section className="moderation-card">
           <div className="moderation-card-header">
-            <div><h3>Meus pedidos abertos</h3><p>Pedidos de carona que voce publicou e ainda estao aguardando alguem atender.</p></div>
+            <div><h3>Meus pedidos de carona</h3><p>Acompanhe seus pedidos e veja o contato de quem aceitou atender.</p></div>
           </div>
-          <div className="report-list">
-            {myOpenRideRequests.map((request) => (
-              <article key={request.id} className="report-item"><strong>{request.zone}</strong><p>{request.pickupAddress}</p><p>{request.requesterWhatsapp}</p></article>
+          <div className="my-ride-requests-list">
+            {myRideRequests.map((request) => (
+              <article key={request.id} className="my-ride-request-card">
+                <div className="my-ride-request-header">
+                  <strong>{request.zone}</strong>
+                  <span className={`status-pill ${request.status === 'Aceito' ? 'status-approved' : 'status-pending'}`}>
+                    {request.status}
+                  </span>
+                </div>
+                <p>{request.pickupAddress}</p>
+                <p>Seu WhatsApp: {request.requesterWhatsapp}</p>
+                {request.acceptedByName ? <p>Motorista: {request.acceptedByName}</p> : <p>Aguardando alguem aceitar.</p>}
+                {request.acceptedByWhatsapp ? <p>WhatsApp do motorista: {request.acceptedByWhatsapp}</p> : null}
+                {request.acceptedByWhatsapp ? (
+                  <div className="ride-contact-actions">
+                    <button className="primary-button" type="button" onClick={() => void handleContactAcceptedDriver(request)}>
+                      Falar com o motorista
+                    </button>
+                    <button
+                      className="whatsapp-icon-button"
+                      type="button"
+                      aria-label="Abrir o WhatsApp do motorista que aceitou"
+                      onClick={() => void handleContactAcceptedDriver(request)}
+                    >
+                      <WhatsAppIcon />
+                    </button>
+                  </div>
+                ) : null}
+              </article>
             ))}
           </div>
         </section>
@@ -906,6 +1318,10 @@ function RidesView({
                 <div><span className="detail-label">Zona desejada</span><strong>{selectedZone}</strong></div>
                 <div><span className="detail-label">Fluxo</span><strong>Seu pedido ficara visivel para todos os usuarios.</strong></div>
               </div>
+              <label className="form-field">
+                <span>Bairro de interesse</span>
+                <input type="text" value={selectedZone} onChange={(event) => setSelectedZone(event.target.value)} />
+              </label>
               <label className="form-field">
                 <span>Seu WhatsApp</span>
                 <input type="text" placeholder="Ex.: (41) 99999-1234" value={requestForm.whatsapp} onChange={(event) => setRequestForm((current) => ({ ...current, whatsapp: event.target.value }))} />
@@ -926,7 +1342,13 @@ function RidesView({
   )
 }
 
-function LostFoundView({ lostItems }: { lostItems: LostItem[] }) {
+function LostFoundView({
+  lostItems,
+  onOpenRegisterModal,
+}: {
+  lostItems: LostItem[]
+  onOpenRegisterModal: () => void
+}) {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [previewItemId, setPreviewItemId] = useState<number>(lostItems[0]?.id ?? 0)
 
@@ -938,10 +1360,6 @@ function LostFoundView({ lostItems }: { lostItems: LostItem[] }) {
 
   const previewItem = lostItems.find((item) => item.id === previewItemId) ?? lostItems[0] ?? null
   const selectedItem = lostItems.find((item) => item.id === selectedItemId) ?? null
-
-  async function handleRegisterItem() {
-    await showFeatureAlert('Registro de item', 'Os itens da lista ja estao vindo do banco. Se quiser, posso criar em seguida o formulario para registrar novos achados.')
-  }
 
   async function handleReturnRequest(item: LostItem) {
     await Swal.fire({
@@ -956,7 +1374,7 @@ function LostFoundView({ lostItems }: { lostItems: LostItem[] }) {
     <section className="page-section lost-found-section">
       <div className="page-heading">
         <div><h2>Achados e Perdidos</h2><p>Itens localizados no campus e registrados para retirada.</p></div>
-        <button className="secondary-button" type="button" onClick={() => void handleRegisterItem()}>Registrar item</button>
+        <button className="secondary-button" type="button" onClick={onOpenRegisterModal}>Registrar item</button>
       </div>
       <div className="lost-found-toolbar"><span className="filter-chip is-active">Todos</span><span className="filter-chip">Documentos</span><span className="filter-chip">Eletronicos</span><span className="filter-chip">Mochilas</span></div>
       {previewItem ? (
@@ -1334,8 +1752,31 @@ function ClockIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>
 }
 
+function InfoIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 10v6M12 7h.01" /></svg>
+}
+
+function WhatsAppIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 4a8 8 0 0 0-6.9 12l-1.1 4 4.1-1A8 8 0 1 0 12 4Z" />
+      <path d="M9.3 8.9c.2-.4.4-.4.7-.4h.6c.2 0 .4 0 .5.4l.5 1.5c.1.3 0 .5-.1.7l-.4.5c-.1.1-.2.3-.1.5.3.7 1 1.8 2.2 2.4.2.1.4.1.5 0l.6-.7c.2-.2.4-.2.6-.1l1.4.7c.2.1.4.2.4.5v.5c0 .3-.2.5-.4.7-.4.3-1 .5-1.7.3-1-.2-2.4-.8-3.7-2.2-1.6-1.5-2.3-3.1-2.5-4.2-.1-.7.1-1.3.4-1.6Z" />
+    </svg>
+  )
+}
+
 function UserCardIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M8.5 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" /><path d="M6 17a4 4 0 0 1 5 0" /><path d="M14 8h4M14 12h4M14 16h3" /></svg>
+}
+
+function UserCircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+      <path d="M7 18a5.5 5.5 0 0 1 10 0" />
+    </svg>
+  )
 }
 
 export default App

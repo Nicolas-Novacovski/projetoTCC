@@ -1,13 +1,128 @@
 import { connectToDatabase } from './connection.js'
 
 const demoStudent = {
+  name: 'Nicolas',
   ra: '2024193227',
   birthDate: '2004-05-18',
 }
 
 const demoAdmin = {
+  name: 'Moderacao UTP',
   login: 'admin.utp',
   password: 'moderacao123',
+}
+
+async function ensureDatabaseSchema(pool) {
+  await pool.query(`
+    create table if not exists usuarios (
+      id_usuario serial primary key,
+      nome varchar(120),
+      ra varchar(20) unique,
+      data_nascimento date,
+      login_admin varchar(120) unique,
+      senha_admin varchar(255),
+      role varchar(20) not null default 'student',
+      is_validado boolean not null default false,
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists publicacoes_mural (
+      id_publicacao serial primary key,
+      id_autor integer references usuarios(id_usuario) on delete set null,
+      categoria varchar(60) not null,
+      titulo varchar(160) not null,
+      local_empresa varchar(160),
+      descricao text not null,
+      status_moderacao varchar(30) not null default 'Pendente',
+      data_submissao timestamp without time zone not null default now()
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists caronas (
+      id_carona serial primary key,
+      id_motorista integer references usuarios(id_usuario) on delete set null,
+      zona_destino varchar(50) not null,
+      titulo varchar(160) not null,
+      horario_saida varchar(20) not null,
+      vagas varchar(40) not null,
+      ponto_encontro varchar(160) not null,
+      veiculo varchar(120) not null,
+      whatsapp_motorista varchar(30) not null,
+      status_carona varchar(30) not null default 'Ativa'
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists solicitacoes_caronas (
+      id_solicitacao serial primary key,
+      id_carona integer references caronas(id_carona) on delete cascade,
+      id_solicitante integer references usuarios(id_usuario) on delete set null,
+      whatsapp_solicitante varchar(30) not null,
+      endereco_embarque varchar(255) not null,
+      status_solicitacao varchar(30) not null default 'Pendente',
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists pedidos_caronas (
+      id_pedido serial primary key,
+      id_solicitante integer references usuarios(id_usuario) on delete set null,
+      zona_destino varchar(50) not null,
+      endereco_embarque varchar(255) not null,
+      whatsapp_solicitante varchar(30) not null,
+      observacoes text,
+      status_pedido varchar(30) not null default 'Aberto',
+      id_usuario_aceitou integer references usuarios(id_usuario) on delete set null,
+      motorista_aceitou_whatsapp varchar(30),
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists achados_perdidos (
+      id_item serial primary key,
+      id_usuario_registro integer references usuarios(id_usuario) on delete set null,
+      titulo varchar(160) not null,
+      local_encontrado varchar(160) not null,
+      data_hora varchar(60) not null,
+      status_item varchar(80) not null,
+      categoria varchar(60) not null,
+      descricao text not null,
+      encontrado_por varchar(120) not null,
+      contato_retirada varchar(160) not null
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists perfis_profissionais (
+      id_perfil serial primary key,
+      id_usuario integer references usuarios(id_usuario) on delete cascade,
+      curso varchar(120) not null,
+      semestre varchar(40) not null,
+      arquivo_curriculo varchar(255),
+      area_desejada varchar(120),
+      pretensao_salarial varchar(80),
+      modelo_trabalho varchar(40),
+      cidade_preferencia varchar(120)
+    )
+  `)
+
+  await pool.query(`
+    create table if not exists denuncias (
+      id_denuncia serial primary key,
+      titulo varchar(160) not null,
+      detalhe text not null,
+      status_denuncia varchar(40) not null default 'Aberta',
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+
+  await pool.query(`alter table usuarios add column if not exists nome varchar(120)`)
+  await pool.query(`alter table pedidos_caronas add column if not exists motorista_aceitou_whatsapp varchar(30)`)
 }
 
 async function syncSequence(pool, tableName, idColumn) {
@@ -35,16 +150,27 @@ async function findOrCreateStudent(pool) {
   )
 
   if (existing.rowCount) {
+    await pool.query(
+      `
+        update usuarios
+        set nome = $2,
+            role = 'student',
+            is_validado = true
+        where id_usuario = $1
+      `,
+      [existing.rows[0].id_usuario, demoStudent.name],
+    )
+
     return existing.rows[0].id_usuario
   }
 
   const created = await pool.query(
     `
-      insert into usuarios (ra, data_nascimento, role, is_validado, data_criacao)
-      values ($1, $2::date, 'student', true, now())
+      insert into usuarios (nome, ra, data_nascimento, role, is_validado, data_criacao)
+      values ($1, $2, $3::date, 'student', true, now())
       returning id_usuario
     `,
-    [demoStudent.ra, demoStudent.birthDate],
+    [demoStudent.name, demoStudent.ra, demoStudent.birthDate],
   )
 
   return created.rows[0].id_usuario
@@ -65,12 +191,13 @@ async function findOrCreateAdmin(pool) {
     await pool.query(
       `
         update usuarios
-        set senha_admin = $2,
+        set nome = $2,
+            senha_admin = $3,
             role = 'admin',
             is_validado = true
         where id_usuario = $1
       `,
-      [existing.rows[0].id_usuario, demoAdmin.password],
+      [existing.rows[0].id_usuario, demoAdmin.name, demoAdmin.password],
     )
 
     return existing.rows[0].id_usuario
@@ -78,11 +205,11 @@ async function findOrCreateAdmin(pool) {
 
   const created = await pool.query(
     `
-      insert into usuarios (login_admin, senha_admin, role, is_validado, data_criacao)
-      values ($1, $2, 'admin', true, now())
+      insert into usuarios (nome, login_admin, senha_admin, role, is_validado, data_criacao)
+      values ($1, $2, $3, 'admin', true, now())
       returning id_usuario
     `,
-    [demoAdmin.login, demoAdmin.password],
+    [demoAdmin.name, demoAdmin.login, demoAdmin.password],
   )
 
   return created.rows[0].id_usuario
@@ -282,21 +409,7 @@ async function ensureReport(pool, values) {
 
 export async function ensureSeedData() {
   const pool = await connectToDatabase()
-  await pool.query(
-    `
-      create table if not exists pedidos_caronas (
-        id_pedido serial primary key,
-        id_solicitante integer references usuarios(id_usuario) on delete set null,
-        zona_destino varchar(50) not null,
-        endereco_embarque varchar(255) not null,
-        whatsapp_solicitante varchar(30) not null,
-        observacoes text,
-        status_pedido varchar(30) not null default 'Aberto',
-        id_usuario_aceitou integer references usuarios(id_usuario) on delete set null,
-        data_criacao timestamp without time zone not null default now()
-      )
-    `,
-  )
+  await ensureDatabaseSchema(pool)
   await syncSequence(pool, 'usuarios', 'id_usuario')
   await syncSequence(pool, 'perfis_profissionais', 'id_perfil')
   await syncSequence(pool, 'publicacoes_mural', 'id_publicacao')

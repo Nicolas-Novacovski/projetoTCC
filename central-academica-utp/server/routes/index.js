@@ -1,6 +1,8 @@
 import { Router } from 'express'
 import {
   closeRide,
+  createLostItem,
+  createRideInterest,
   createRide,
   createRideRequest,
   createPublication,
@@ -28,7 +30,7 @@ router.get('/database', (_request, response) => {
   response.json({
     connection: {
       status: 'connected',
-      message: 'Conexao ativa com o banco PostgreSQL no Neon.',
+      message: 'Conexao ativa com o banco PostgreSQL.',
     },
     config: getDatabaseConfig(),
   })
@@ -114,6 +116,34 @@ router.post('/publications', async (request, response) => {
   })
 })
 
+router.post('/lost-items', async (request, response) => {
+  const { userId, title, place, date, status, category, description, foundBy, contact } = request.body
+
+  if (!userId || !title || !place || !date || !status || !category || !description || !foundBy || !contact) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Campos obrigatorios do item nao enviados.',
+    })
+  }
+
+  const data = await createLostItem({
+    userId: Number(userId),
+    title,
+    place,
+    date,
+    status,
+    category,
+    description,
+    foundBy,
+    contact,
+  })
+
+  return response.status(201).json({
+    status: 'ok',
+    data,
+  })
+})
+
 router.post('/rides', async (request, response) => {
   const { userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp } = request.body
 
@@ -178,6 +208,30 @@ router.patch('/rides/:id/close', async (request, response) => {
   const data = await closeRide(rideId, Number(userId))
 
   return response.json({
+    status: 'ok',
+    data,
+  })
+})
+
+router.post('/rides/:id/interests', async (request, response) => {
+  const rideId = Number(request.params.id)
+  const { userId, whatsapp, pickupAddress } = request.body
+
+  if (!rideId || !userId || !whatsapp || !pickupAddress) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para registrar interesse na carona.',
+    })
+  }
+
+  const data = await createRideInterest({
+    rideId,
+    userId: Number(userId),
+    whatsapp,
+    pickupAddress,
+  })
+
+  return response.status(201).json({
     status: 'ok',
     data,
   })
