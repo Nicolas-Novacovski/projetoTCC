@@ -189,6 +189,43 @@ async function getUserById(userId) {
   return result.rows[0] ?? null
 }
 
+async function getVisibleRideRequests(pool, userId) {
+  return pool.query(
+    `
+      select
+        p.*,
+        coalesce(nullif(solicitante.nome, ''), nullif(solicitante.login_admin, ''), 'Estudante UTP') as solicitante_nome,
+        coalesce(nullif(aceitou.nome, ''), nullif(aceitou.login_admin, ''), 'Estudante UTP') as usuario_aceitou_nome
+      from pedidos_caronas p
+      left join usuarios solicitante on solicitante.id_usuario = p.id_solicitante
+      left join usuarios aceitou on aceitou.id_usuario = p.id_usuario_aceitou
+      where p.status_pedido = 'Aberto'
+         or p.id_solicitante = $1
+      order by
+        case when p.status_pedido = 'Aberto' then 0 else 1 end,
+        p.data_criacao desc,
+        p.id_pedido desc
+    `,
+    [userId],
+  )
+}
+
+async function getVisibleRideInterests(pool, userId) {
+  return pool.query(
+    `
+      select
+        s.*,
+        coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as solicitante_nome
+      from solicitacoes_caronas s
+      inner join caronas c on c.id_carona = s.id_carona
+      left join usuarios u on u.id_usuario = s.id_solicitante
+      where c.id_motorista = $1
+      order by s.data_criacao desc, s.id_solicitacao desc
+    `,
+    [userId],
+  )
+}
+
 export async function loginStudent(ra, birthDate) {
   const pool = await connectToDatabase()
   const result = await pool.query(
@@ -247,26 +284,28 @@ export async function loginAdmin(login, password) {
 export async function getAppData(userId, role) {
   const pool = await connectToDatabase()
   const user = await getUserById(userId)
+  const isAdmin = role === 'admin'
 
   if (!user) {
     throw new Error('Usuario nao encontrado.')
   }
 
-  const [ridesResult, lostItemsResult, publicationsResult, moderationResult, reportsResult, profileResult, rideRequestsResult, rideInterestsResult] =
+  const [ridesResult, lostItemsResult, publicationsResult, profileResult, rideRequestsResult, rideInterestsResult, reportsResult] =
     await Promise.all([
       pool.query(
         `
           select
             c.*,
-            (
-              select count(*)
-              from solicitacoes_caronas s
-              where s.id_carona = c.id_carona
-                and s.status_solicitacao = 'Pendente'
-            ) as total_solicitacoes,
+            coalesce(requests.total_solicitacoes, 0) as total_solicitacoes,
             coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as motorista
           from caronas c
           left join usuarios u on u.id_usuario = c.id_motorista
+          left join (
+            select id_carona, count(*) as total_solicitacoes
+            from solicitacoes_caronas
+            where status_solicitacao = 'Pendente'
+            group by id_carona
+          ) requests on requests.id_carona = c.id_carona
           order by c.id_carona desc
         `,
       ),
@@ -291,23 +330,6 @@ export async function getAppData(userId, role) {
       ),
       pool.query(
         `
-          select
-            p.*,
-            coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as autor
-          from publicacoes_mural p
-          left join usuarios u on u.id_usuario = p.id_autor
-          order by p.data_submissao desc, p.id_publicacao desc
-        `,
-      ),
-      pool.query(
-        `
-          select *
-          from denuncias
-          order by data_criacao desc, id_denuncia desc
-        `,
-      ),
-      pool.query(
-        `
           select *
           from perfis_profissionais
           where id_usuario = $1
@@ -316,34 +338,23 @@ export async function getAppData(userId, role) {
         `,
         [userId],
       ),
-      pool.query(
-        `
-          select
-            p.*,
-            coalesce(nullif(solicitante.nome, ''), nullif(solicitante.login_admin, ''), 'Estudante UTP') as solicitante_nome,
-            coalesce(nullif(aceitou.nome, ''), nullif(aceitou.login_admin, ''), 'Estudante UTP') as usuario_aceitou_nome
-          from pedidos_caronas p
-          left join usuarios solicitante on solicitante.id_usuario = p.id_solicitante
-          left join usuarios aceitou on aceitou.id_usuario = p.id_usuario_aceitou
-          order by p.data_criacao desc, p.id_pedido desc
-        `,
-      ),
-      pool.query(
-        `
-          select
-            s.*,
-            coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as solicitante_nome
-          from solicitacoes_caronas s
-          left join usuarios u on u.id_usuario = s.id_solicitante
-          order by s.data_criacao desc, s.id_solicitacao desc
-        `,
-      ),
+      getVisibleRideRequests(pool, userId),
+      getVisibleRideInterests(pool, userId),
+      isAdmin
+        ? pool.query(
+            `
+              select *
+              from denuncias
+              order by data_criacao desc, id_denuncia desc
+            `,
+          )
+        : Promise.resolve({ rows: [] }),
     ])
 
   const rides = ridesResult.rows.map(mapRide)
   const lostItems = lostItemsResult.rows.map(mapLostItem)
   const muralPosts = publicationsResult.rows.map(mapPublication)
-  const moderationQueue = moderationResult.rows.map(mapModerationItem)
+  const moderationQueue = isAdmin ? publicationsResult.rows.map(mapModerationItem) : []
   const reports = reportsResult.rows.map(mapReport)
   const careerProfile = mapCareerProfile(profileResult.rows[0] ?? null)
   const rideRequestsInbox = rideRequestsResult.rows.map(mapRideRequest)

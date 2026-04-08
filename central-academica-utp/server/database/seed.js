@@ -125,6 +125,22 @@ async function ensureDatabaseSchema(pool) {
   await pool.query(`alter table pedidos_caronas add column if not exists motorista_aceitou_whatsapp varchar(30)`)
 }
 
+async function ensureDatabaseIndexes(pool) {
+  await pool.query(`create index if not exists idx_usuarios_ra on usuarios (ra)`)
+  await pool.query(`create index if not exists idx_usuarios_login_admin on usuarios (login_admin)`)
+  await pool.query(`create index if not exists idx_publicacoes_status_data on publicacoes_mural (status_moderacao, data_submissao desc)`)
+  await pool.query(`create index if not exists idx_publicacoes_autor on publicacoes_mural (id_autor)`)
+  await pool.query(`create index if not exists idx_caronas_status_data on caronas (status_carona, id_carona desc)`)
+  await pool.query(`create index if not exists idx_caronas_motorista on caronas (id_motorista, id_carona desc)`)
+  await pool.query(`create index if not exists idx_solicitacoes_caronas_lookup on solicitacoes_caronas (id_carona, status_solicitacao, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_solicitacoes_caronas_solicitante on solicitacoes_caronas (id_solicitante, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_pedidos_caronas_status_data on pedidos_caronas (status_pedido, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_pedidos_caronas_solicitante on pedidos_caronas (id_solicitante, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_perfis_profissionais_usuario on perfis_profissionais (id_usuario, id_perfil desc)`)
+  await pool.query(`create index if not exists idx_achados_perdidos_data on achados_perdidos (id_item desc)`)
+  await pool.query(`create index if not exists idx_denuncias_data on denuncias (data_criacao desc, id_denuncia desc)`)
+}
+
 async function syncSequence(pool, tableName, idColumn) {
   await pool.query(
     `
@@ -410,6 +426,19 @@ async function ensureReport(pool, values) {
 export async function ensureSeedData() {
   const pool = await connectToDatabase()
   await ensureDatabaseSchema(pool)
+  await ensureDatabaseIndexes(pool)
+
+  const existingUsersResult = await pool.query(
+    `
+      select count(*)::int as total
+      from usuarios
+    `,
+  )
+
+  if ((existingUsersResult.rows[0]?.total ?? 0) > 0) {
+    return
+  }
+
   await syncSequence(pool, 'usuarios', 'id_usuario')
   await syncSequence(pool, 'perfis_profissionais', 'id_perfil')
   await syncSequence(pool, 'publicacoes_mural', 'id_publicacao')

@@ -691,9 +691,97 @@
 .rides-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 28px;
+  gap: 22px;
   align-items: start;
   margin-bottom: 28px;
+}
+
+.rides-action-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 22px;
+  align-items: stretch;
+  margin-bottom: 28px;
+  padding: 24px 26px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(55, 137, 173, 0.18), transparent 36%),
+    linear-gradient(135deg, #12334e 0%, #1d5674 100%);
+  box-shadow: 0 20px 42px rgba(16, 59, 82, 0.16);
+}
+
+.rides-action-copy h3 {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: 32px;
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.rides-action-copy p {
+  max-width: 620px;
+  margin: 0;
+  color: rgba(233, 245, 251, 0.8);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.rides-action-buttons {
+  display: grid;
+  gap: 14px;
+}
+
+.ride-hero-button {
+  min-height: 110px;
+  padding: 20px 22px;
+  border: 0;
+  border-radius: 22px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.ride-hero-button:hover {
+  transform: translateY(-2px);
+}
+
+.ride-hero-button-label {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ride-hero-button strong {
+  display: block;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.ride-hero-button-primary {
+  background: linear-gradient(135deg, #f4fbff 0%, #ffffff 100%);
+  color: #12334e;
+  box-shadow: 0 20px 34px rgba(9, 31, 46, 0.16);
+}
+
+.ride-hero-button-primary .ride-hero-button-label {
+  color: #2c7ca1;
+}
+
+.ride-hero-button-secondary {
+  background: linear-gradient(135deg, #1faa59 0%, #178f4b 100%);
+  color: #ffffff;
+  box-shadow: 0 20px 34px rgba(22, 136, 69, 0.24);
+}
+
+.ride-hero-button-secondary .ride-hero-button-label {
+  color: rgba(233, 255, 242, 0.82);
 }
 
 .rides-hero {
@@ -735,7 +823,7 @@
   line-height: 1.55;
 }
 
-.map-card,
+.rides-search-panel,
 .ride-card,
 .lost-card,
 .lost-details-card,
@@ -743,17 +831,10 @@
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 10px 28px rgba(16, 59, 82, 0.08);
+  padding: 22px;
 }
 
-.map-card {
-  overflow: hidden;
-}
-
-.map-card-enhanced {
-  padding: 18px;
-}
-
-.map-card-header,
+.rides-search-panel-header,
 .rides-list-header {
   display: flex;
   align-items: flex-start;
@@ -762,7 +843,7 @@
   margin-bottom: 16px;
 }
 
-.map-card-header h3,
+.rides-search-panel-header h3,
 .rides-list-header h3,
 .lost-details-header h3 {
   margin: 0 0 4px;
@@ -770,7 +851,7 @@
   font-size: 22px;
 }
 
-.map-card-header p,
+.rides-search-panel-header p,
 .rides-list-header p {
   margin: 0;
   color: #6c8798;
@@ -783,26 +864,11 @@
   font-weight: 700;
 }
 
-.real-map-frame {
-  overflow: hidden;
-  border-radius: 20px;
-  height: 460px;
-  border: 1px solid #d3e2eb;
-  background: #dbeaf3;
-}
-
-.real-map-frame iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
 .rides-search-bar {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  margin-top: 16px;
 }
 
 .rides-search-bar input {
@@ -2116,6 +2182,7 @@
 
   .career-layout,
   .home-grid,
+  .rides-action-hero,
   .rides-hero,
   .rides-grid,
   .lost-found-layout,
@@ -2245,6 +2312,18 @@
 
   .publish-grid {
     grid-template-columns: 1fr;
+  }
+
+  .rides-action-hero {
+    padding: 20px;
+  }
+
+  .rides-action-copy h3 {
+    font-size: 28px;
+  }
+
+  .ride-hero-button strong {
+    font-size: 24px;
   }
 
   .lost-card {

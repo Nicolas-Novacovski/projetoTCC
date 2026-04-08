@@ -293,7 +293,7 @@ function showWhatsAppContactModal({
             <div>
               <strong>${personName}</strong>
               <span>${phone}</span>
-            </article>
+            </div>
           </div>
           <div class="whatsapp-modal-detail">${detail}</div>
           ${
@@ -978,7 +978,9 @@ function RidesView({
   const safeRides = rides ?? []
   const safeRideRequestsInbox = rideRequestsInbox ?? []
   const safeRideInterestsInbox = rideInterestsInbox ?? []
-  const availableZones = [...new Set((rideHotspots ?? []).map((spot) => spot.id).filter(Boolean))]
+  const availableZones = [
+    ...new Set([...safeRides.map((ride) => ride.zone?.trim()), ...(rideHotspots ?? []).map((spot) => spot.id)].filter(Boolean)),
+  ] as string[]
   const [selectedZone, setSelectedZone] = useState<string>(availableZones[0] ?? 'Centro')
   const [rideSearch, setRideSearch] = useState('')
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
@@ -1137,10 +1139,6 @@ function RidesView({
           <h2>Caronas</h2>
           <p>Consulte todas as caronas abertas e use a busca para encontrar bairros, motoristas ou rotas.</p>
         </div>
-        <div className="row-actions">
-          <button className="secondary-button" type="button" onClick={() => setIsRequestModalOpen(true)}>Solicitar carona</button>
-          <button className="secondary-button" type="button" onClick={onOpenRideModal}>Oferecer carona</button>
-        </div>
       </div>
       <article className="rides-disclaimer" role="note" aria-label="Aviso importante sobre caronas">
         <div className="rides-disclaimer-icon"><InfoIcon /></div>
@@ -1153,19 +1151,39 @@ function RidesView({
           </p>
         </div>
       </article>
+      <section className="rides-action-hero" aria-label="Acoes principais de carona">
+        <div className="rides-action-copy">
+          <span className="detail-tag">Fluxo rapido</span>
+          <h3>Encontre ou publique uma carona em poucos cliques</h3>
+          <p>
+            Abra um pedido publico se voce precisa de ajuda, ou publique sua rota para receber interessados.
+            O contato com WhatsApp continua dentro do fluxo de cada carona.
+          </p>
+        </div>
+        <div className="rides-action-buttons">
+          <button className="ride-hero-button ride-hero-button-primary" type="button" onClick={() => setIsRequestModalOpen(true)}>
+            <span className="ride-hero-button-label">Preciso de carona</span>
+            <strong>Solicitar carona</strong>
+          </button>
+          <button className="ride-hero-button ride-hero-button-secondary" type="button" onClick={onOpenRideModal}>
+            <span className="ride-hero-button-label">Tenho vagas no carro</span>
+            <strong>Oferecer carona</strong>
+          </button>
+        </div>
+      </section>
       <div className="rides-hero">
         <div className="rides-summary-card"><span>Rotas abertas</span><strong>{safeRides.filter((ride) => ride.status === 'Ativa').length}</strong><p>Caronas disponiveis no sistema neste momento.</p></div>
         <div className="rides-summary-card"><span>Destino padrao</span><strong>Campus UTP</strong><p>Rotas focadas no periodo noturno com ponto de encontro definido.</p></div>
         <div className="rides-summary-card"><span>Pedidos publicos</span><strong>{openRideRequests.length}</strong><p>Solicitacoes visiveis para todos os usuarios.</p></div>
       </div>
       <div className="rides-grid">
-        <div className="map-card map-card-enhanced">
-          <div className="map-card-header">
-            <div><h3>Mapa de Curitiba</h3><p>Visualizacao de referencia da cidade para orientar os trajetos e bairros atendidos.</p></div>
+        <div className="rides-search-panel">
+          <div className="rides-search-panel-header">
+            <div>
+              <h3>Buscar caronas abertas</h3>
+              <p>Pesquise por bairro, motorista, rota, veiculo ou horario para localizar a melhor opcao.</p>
+            </div>
             <span className="map-legend">Busca atual: {rideSearch || 'Todas as caronas'}</span>
-          </div>
-          <div className="real-map-frame">
-            <iframe title="Mapa de Curitiba" src="https://www.openstreetmap.org/export/embed.html?bbox=-49.42%2C-25.62%2C-49.17%2C-25.35&layer=mapnik&marker=-25.44%2C-49.27" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
           </div>
           <div className="rides-search-bar">
             <input
