@@ -74,6 +74,7 @@ async function ensureDatabaseSchema(pool) {
       zona_destino varchar(50) not null,
       endereco_embarque varchar(255) not null,
       whatsapp_solicitante varchar(30) not null,
+      dias_semana text[],
       observacoes text,
       status_pedido varchar(30) not null default 'Aberto',
       id_usuario_aceitou integer references usuarios(id_usuario) on delete set null,
@@ -123,6 +124,89 @@ async function ensureDatabaseSchema(pool) {
 
   await pool.query(`alter table usuarios add column if not exists nome varchar(120)`)
   await pool.query(`alter table pedidos_caronas add column if not exists motorista_aceitou_whatsapp varchar(30)`)
+  await pool.query(`alter table caronas add column if not exists dias_semana text[]`)
+  await pool.query(`alter table pedidos_caronas add column if not exists dias_semana text[]`)
+  await pool.query(`alter table caronas alter column dias_semana drop not null`)
+  await pool.query(`alter table pedidos_caronas alter column dias_semana drop not null`)
+
+  await pool.query(`
+    do $$
+    begin
+      if exists (
+        select 1
+        from information_schema.columns
+        where table_name = 'caronas'
+          and column_name = 'dias_semana'
+          and udt_name <> '_text'
+      ) then
+        execute '
+          alter table caronas
+          alter column dias_semana drop default
+        ';
+        execute '
+          alter table caronas
+          alter column dias_semana type text[]
+          using case
+            when dias_semana is null or btrim(dias_semana::text) = '''' then null
+            else regexp_split_to_array(trim(both ''"'' from dias_semana::text), ''\\s*,\\s*'')
+          end
+        ';
+      end if;
+    end
+    $$;
+  `)
+
+  await pool.query(`
+    do $$
+    begin
+      if exists (
+        select 1
+        from information_schema.columns
+        where table_name = 'pedidos_caronas'
+          and column_name = 'dias_semana'
+          and udt_name <> '_text'
+      ) then
+        execute '
+          alter table pedidos_caronas
+          alter column dias_semana drop default
+        ';
+        execute '
+          alter table pedidos_caronas
+          alter column dias_semana type text[]
+          using case
+            when dias_semana is null or btrim(dias_semana::text) = '''' then null
+            else regexp_split_to_array(trim(both ''"'' from dias_semana::text), ''\\s*,\\s*'')
+          end
+        ';
+      end if;
+    end
+    $$;
+  `)
+
+  await pool.query(`
+    update pedidos_caronas
+    set dias_semana = regexp_split_to_array(observacoes, '\\s*,\\s*')
+    where (dias_semana is null or cardinality(dias_semana) = 0)
+      and observacoes is not null
+      and btrim(observacoes) <> ''
+      and observacoes ~* 'Segunda|Terca|Terça|Quarta|Quinta|Sexta'
+  `)
+
+  await pool.query(`
+    update pedidos_caronas
+    set dias_semana = null
+    where dias_semana is not null
+      and array_length(dias_semana, 1) = 1
+      and lower(coalesce(dias_semana[1], '')) in ('nao informado', 'não informado')
+  `)
+
+  await pool.query(`
+    update caronas
+    set dias_semana = null
+    where dias_semana is not null
+      and array_length(dias_semana, 1) = 1
+      and lower(coalesce(dias_semana[1], '')) in ('nao informado', 'não informado')
+  `)
 }
 
 async function ensureDatabaseIndexes(pool) {
@@ -132,10 +216,12 @@ async function ensureDatabaseIndexes(pool) {
   await pool.query(`create index if not exists idx_publicacoes_autor on publicacoes_mural (id_autor)`)
   await pool.query(`create index if not exists idx_caronas_status_data on caronas (status_carona, id_carona desc)`)
   await pool.query(`create index if not exists idx_caronas_motorista on caronas (id_motorista, id_carona desc)`)
+  await pool.query(`create index if not exists idx_caronas_dias_semana on caronas using gin (dias_semana)`)
   await pool.query(`create index if not exists idx_solicitacoes_caronas_lookup on solicitacoes_caronas (id_carona, status_solicitacao, data_criacao desc)`)
   await pool.query(`create index if not exists idx_solicitacoes_caronas_solicitante on solicitacoes_caronas (id_solicitante, data_criacao desc)`)
   await pool.query(`create index if not exists idx_pedidos_caronas_status_data on pedidos_caronas (status_pedido, data_criacao desc)`)
   await pool.query(`create index if not exists idx_pedidos_caronas_solicitante on pedidos_caronas (id_solicitante, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_pedidos_caronas_dias_semana on pedidos_caronas using gin (dias_semana)`)
   await pool.query(`create index if not exists idx_perfis_profissionais_usuario on perfis_profissionais (id_usuario, id_perfil desc)`)
   await pool.query(`create index if not exists idx_achados_perdidos_data on achados_perdidos (id_item desc)`)
   await pool.query(`create index if not exists idx_denuncias_data on denuncias (data_criacao desc, id_denuncia desc)`)
@@ -338,9 +424,10 @@ async function ensureRide(pool, studentId, values) {
         ponto_encontro,
         veiculo,
         whatsapp_motorista,
+        dias_semana,
         status_carona
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, 'Ativa')
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Ativa')
     `,
     [
       studentId,
@@ -351,6 +438,7 @@ async function ensureRide(pool, studentId, values) {
       values.meeting,
       values.vehicle,
       values.whatsapp,
+      values.weekdays ?? ['Segunda', 'Quarta', 'Sexta'],
     ],
   )
 }
@@ -487,6 +575,7 @@ export async function ensureSeedData() {
     meeting: 'Terminal do Boqueirao',
     vehicle: 'Onix prata',
     whatsapp: '(41) 99991-1001',
+    weekdays: ['Segunda', 'Terca', 'Quarta'],
   })
 
   await ensureRide(pool, studentId, {
@@ -497,6 +586,7 @@ export async function ensureSeedData() {
     meeting: 'Rua Winston Churchill',
     vehicle: 'HB20 branco',
     whatsapp: '(41) 99991-1002',
+    weekdays: ['Segunda', 'Quarta', 'Sexta'],
   })
 
   await ensureRide(pool, studentId, {
@@ -507,6 +597,7 @@ export async function ensureSeedData() {
     meeting: 'Praca Rui Barbosa',
     vehicle: 'Sandero vermelho',
     whatsapp: '(41) 99991-1003',
+    weekdays: ['Terca', 'Quinta'],
   })
 
   await ensureLostItem(pool, studentId, {

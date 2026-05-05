@@ -6,6 +6,35 @@ const importantDeadlines = [
   { title: 'Solicitacao de estagio', detail: 'Validacao em 3 dias uteis' },
 ]
 
+const weekdayOrder = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']
+
+function normalizeWeekdays(weekdays = []) {
+  if (!Array.isArray(weekdays)) {
+    return []
+  }
+
+  const uniqueWeekdays = new Set(
+    weekdays
+      .map((value) => String(value ?? '').trim())
+      .filter((value) => weekdayOrder.includes(value)),
+  )
+
+  return weekdayOrder.filter((day) => uniqueWeekdays.has(day))
+}
+
+function formatWeekdays(value) {
+  if (Array.isArray(value)) {
+    const normalized = normalizeWeekdays(value)
+    return normalized.length ? normalized.join(', ') : 'Nao informado'
+  }
+
+  if (typeof value === 'string') {
+    return value.trim() || 'Nao informado'
+  }
+
+  return 'Nao informado'
+}
+
 function getDisplayName(row) {
   if (row.nome) {
     return row.nome
@@ -62,6 +91,7 @@ function mapRide(row) {
     status: row.status_carona,
     whatsapp: row.whatsapp_motorista,
     requestCount: Number(row.total_solicitacoes ?? 0),
+    weekdays: formatWeekdays(row.dias_semana),
   }
 }
 
@@ -108,6 +138,7 @@ function mapRideRequest(row) {
     zone: row.zona_destino,
     pickupAddress: row.endereco_embarque,
     requesterWhatsapp: row.whatsapp_solicitante,
+    weekdays: formatWeekdays(row.dias_semana),
     notes: row.observacoes,
     status: row.status_pedido,
     acceptedByUserId: row.id_usuario_aceitou,
@@ -451,8 +482,14 @@ export async function createRide({
   meetingPoint,
   vehicle,
   whatsapp,
+  weekdays,
 }) {
   const pool = await connectToDatabase()
+  const normalizedWeekdays = normalizeWeekdays(weekdays)
+
+  if (!normalizedWeekdays.length) {
+    throw new Error('Selecione pelo menos um dia da semana para a carona.')
+  }
 
   await pool.query(
     `
@@ -465,18 +502,38 @@ export async function createRide({
         ponto_encontro,
         veiculo,
         whatsapp_motorista,
+        dias_semana,
         status_carona
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, 'Ativa')
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Ativa')
     `,
-    [userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp],
+    [userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
   )
 
   return getAppData(userId, 'student')
 }
 
-export async function createRideRequest({ zone, userId, whatsapp, pickupAddress }) {
+export async function createRideRequest({ zone, userId, whatsapp, pickupAddress, weekdays = [] }) {
   const pool = await connectToDatabase()
+  const normalizedWeekdays = normalizeWeekdays(weekdays)
+
+  if (!normalizedWeekdays.length) {
+    throw new Error('Selecione pelo menos um dia da semana para o pedido.')
+  }
+
+  const activeRequestsResult = await pool.query(
+    `
+      select count(*)::int as total
+      from pedidos_caronas
+      where id_solicitante = $1
+        and status_pedido in ('Aberto', 'Aceito')
+    `,
+    [userId],
+  )
+
+  if ((activeRequestsResult.rows[0]?.total ?? 0) >= 2) {
+    throw new Error('Voce pode manter no maximo 2 pedidos de carona ativos ao mesmo tempo.')
+  }
 
   await pool.query(
     `
@@ -485,13 +542,14 @@ export async function createRideRequest({ zone, userId, whatsapp, pickupAddress 
         zona_destino,
         whatsapp_solicitante,
         endereco_embarque,
+        dias_semana,
         observacoes,
         status_pedido,
         data_criacao
       )
-      values ($1, $2, $3, $4, $5, 'Aberto', now())
+      values ($1, $2, $3, $4, $5, null, 'Aberto', now())
     `,
-    [userId, zone, whatsapp, pickupAddress, null],
+    [userId, zone, whatsapp, pickupAddress, normalizedWeekdays],
   )
 
   return getAppData(userId, 'student')
@@ -534,6 +592,50 @@ export async function createRideInterest({ rideId, userId, whatsapp, pickupAddre
   return getAppData(userId, 'student')
 }
 
+export async function updateRide({
+  rideId,
+  userId,
+  zone,
+  title,
+  departureTime,
+  seats,
+  meetingPoint,
+  vehicle,
+  whatsapp,
+  weekdays,
+}) {
+  const pool = await connectToDatabase()
+  const normalizedWeekdays = normalizeWeekdays(weekdays)
+
+  if (!normalizedWeekdays.length) {
+    throw new Error('Selecione pelo menos um dia da semana para a carona.')
+  }
+
+  const result = await pool.query(
+    `
+      update caronas
+      set zona_destino = $3,
+          titulo = $4,
+          horario_saida = $5,
+          vagas = $6,
+          ponto_encontro = $7,
+          veiculo = $8,
+          whatsapp_motorista = $9,
+          dias_semana = $10
+      where id_carona = $1
+        and id_motorista = $2
+      returning id_carona
+    `,
+    [rideId, userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Nao foi possivel atualizar essa carona.')
+  }
+
+  return getAppData(userId, 'student')
+}
+
 export async function closeRide(rideId, userId) {
   const pool = await connectToDatabase()
   const result = await pool.query(
@@ -548,6 +650,35 @@ export async function closeRide(rideId, userId) {
 
   if (!result.rowCount) {
     throw new Error('Nao foi possivel encerrar a vaga dessa carona.')
+  }
+
+  return getAppData(userId, 'student')
+}
+
+export async function updateRideRequest({ requestId, userId, zone, whatsapp, pickupAddress, weekdays = [] }) {
+  const pool = await connectToDatabase()
+  const normalizedWeekdays = normalizeWeekdays(weekdays)
+
+  if (!normalizedWeekdays.length) {
+    throw new Error('Selecione pelo menos um dia da semana para o pedido.')
+  }
+
+  const result = await pool.query(
+    `
+      update pedidos_caronas
+      set zona_destino = $3,
+          whatsapp_solicitante = $4,
+          endereco_embarque = $5,
+          dias_semana = $6
+      where id_pedido = $1
+        and id_solicitante = $2
+      returning id_pedido
+    `,
+    [requestId, userId, zone, whatsapp, pickupAddress, normalizedWeekdays],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Nao foi possivel atualizar esse pedido de carona.')
   }
 
   return getAppData(userId, 'student')
@@ -605,6 +736,26 @@ export async function updateRideRequestStatus(requestId, userId, status) {
     `,
     [requestId, status, status === 'Aceito' ? userId : null, status === 'Aceito' ? acceptedDriverWhatsapp : null],
   )
+
+  return getAppData(userId, 'student')
+}
+
+export async function deleteRideRequest(requestId, userId) {
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      delete from pedidos_caronas
+      where id_pedido = $1
+        and id_solicitante = $2
+      returning id_pedido
+    `,
+    [requestId, userId],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Nao foi possivel excluir esse pedido de carona.')
+  }
 
   return getAppData(userId, 'student')
 }

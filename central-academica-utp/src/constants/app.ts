@@ -1,0 +1,26 @@
+import type { CareerProfile, LostItemForm } from '../types/app'
+
+export const studentCredentials = { ra: '2024193227', birthDate: '2004-05-18' }
+
+export const adminCredentials = { login: 'admin.utp', password: 'moderacao123' }
+
+export const emptyCareerProfile: CareerProfile = {
+  course: '',
+  semester: '',
+  resumeFileName: '',
+  desiredArea: '',
+  salaryExpectation: '',
+  workModel: 'Hibrido',
+  preferredCity: '',
+}
+
+export const emptyLostItemForm: LostItemForm = {
+  title: '',
+  place: '',
+  date: '',
+  status: 'Aguardando retirada',
+  category: 'Documentos',
+  description: '',
+  foundBy: '',
+  contact: '',
+}

@@ -6,11 +6,14 @@ import {
   createRide,
   createRideRequest,
   createPublication,
+  deleteRideRequest,
   getAdminDatabaseSnapshot,
   getAppData,
   loginAdmin,
   loginStudent,
   saveCareerProfile,
+  updateRide,
+  updateRideRequest,
   updateRideRequestStatus,
   updatePublicationStatus,
 } from '../database/app-service.js'
@@ -145,9 +148,9 @@ router.post('/lost-items', async (request, response) => {
 })
 
 router.post('/rides', async (request, response) => {
-  const { userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp } = request.body
+  const { userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, weekdays } = request.body
 
-  if (!userId || !zone || !title || !departureTime || !seats || !meetingPoint || !vehicle || !whatsapp) {
+  if (!userId || !zone || !title || !departureTime || !seats || !meetingPoint || !vehicle || !whatsapp || !Array.isArray(weekdays) || weekdays.length === 0) {
     return response.status(400).json({
       status: 'error',
       message: 'Campos obrigatorios da carona nao enviados.',
@@ -163,6 +166,7 @@ router.post('/rides', async (request, response) => {
     meetingPoint,
     vehicle,
     whatsapp,
+    weekdays,
   })
 
   return response.status(201).json({
@@ -172,9 +176,9 @@ router.post('/rides', async (request, response) => {
 })
 
 router.post('/ride-requests', async (request, response) => {
-  const { userId, zone, whatsapp, pickupAddress } = request.body
+  const { userId, zone, whatsapp, pickupAddress, weekdays } = request.body
 
-  if (!userId || !zone || !whatsapp || !pickupAddress) {
+  if (!userId || !zone || !whatsapp || !pickupAddress || !Array.isArray(weekdays) || weekdays.length === 0) {
     return response.status(400).json({
       status: 'error',
       message: 'Campos obrigatorios da solicitacao nao enviados.',
@@ -186,6 +190,7 @@ router.post('/ride-requests', async (request, response) => {
     userId: Number(userId),
     whatsapp,
     pickupAddress,
+    weekdays,
   })
 
   return response.status(201).json({
@@ -206,6 +211,36 @@ router.patch('/rides/:id/close', async (request, response) => {
   }
 
   const data = await closeRide(rideId, Number(userId))
+
+  return response.json({
+    status: 'ok',
+    data,
+  })
+})
+
+router.patch('/rides/:id', async (request, response) => {
+  const rideId = Number(request.params.id)
+  const { userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, weekdays } = request.body
+
+  if (!rideId || !userId || !zone || !title || !departureTime || !seats || !meetingPoint || !vehicle || !whatsapp || !Array.isArray(weekdays) || weekdays.length === 0) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para editar a carona.',
+    })
+  }
+
+  const data = await updateRide({
+    rideId,
+    userId: Number(userId),
+    zone,
+    title,
+    departureTime,
+    seats,
+    meetingPoint,
+    vehicle,
+    whatsapp,
+    weekdays,
+  })
 
   return response.json({
     status: 'ok',
@@ -237,6 +272,32 @@ router.post('/rides/:id/interests', async (request, response) => {
   })
 })
 
+router.patch('/ride-requests/:id', async (request, response) => {
+  const requestId = Number(request.params.id)
+  const { userId, zone, whatsapp, pickupAddress, weekdays } = request.body
+
+  if (!requestId || !userId || !zone || !whatsapp || !pickupAddress || !Array.isArray(weekdays) || weekdays.length === 0) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para editar a solicitacao.',
+    })
+  }
+
+  const data = await updateRideRequest({
+    requestId,
+    userId: Number(userId),
+    zone,
+    whatsapp,
+    pickupAddress,
+    weekdays,
+  })
+
+  return response.json({
+    status: 'ok',
+    data,
+  })
+})
+
 router.patch('/ride-requests/:id/status', async (request, response) => {
   const requestId = Number(request.params.id)
   const { userId, status } = request.body
@@ -249,6 +310,25 @@ router.patch('/ride-requests/:id/status', async (request, response) => {
   }
 
   const data = await updateRideRequestStatus(requestId, Number(userId), status)
+
+  return response.json({
+    status: 'ok',
+    data,
+  })
+})
+
+router.delete('/ride-requests/:id', async (request, response) => {
+  const requestId = Number(request.params.id)
+  const userId = Number(request.query.userId)
+
+  if (!requestId || !userId) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para excluir a solicitacao.',
+    })
+  }
+
+  const data = await deleteRideRequest(requestId, userId)
 
   return response.json({
     status: 'ok',
