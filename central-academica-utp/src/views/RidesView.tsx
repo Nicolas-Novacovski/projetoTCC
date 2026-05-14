@@ -569,29 +569,13 @@ export function RidesView({
                 <span>Seu endereco de embarque <em className="required-marker">*</em></span>
                 <textarea rows={4} placeholder="Ex.: Rua X, numero Y, bairro Z" value={requestForm.pickupAddress} onChange={(event) => setRequestForm((current) => ({ ...current, pickupAddress: event.target.value }))} />
               </label>
-             <div>
-  <span className="detail-label">Fluxo</span>
-  <strong>Quem puder ajudar vai ver seu endereco e seu WhatsApp para combinar a carona.</strong>
-</div>
-
-<button 
-  className="primary-button" 
-  type="submit" 
-  style={{ 
-    backgroundColor: '#2b5a7a', 
-    color: '#ffffff',           
-    fontWeight: 'bold',         
-    border: '2px solid #1a3b52',
-    padding: '12px 24px',       
-    borderRadius: '8px',        
-    transition: 'all 0.2s'      
-  }}
-  disabled={!editingRequestId && hasReachedRideRequestLimit}
->
-  {editingRequestId ? 'Salvar alteracoes' : 'Publicar pedido'}
-</button>
-
-</div>
+            <div>
+              <span className="detail-label">Fluxo</span>
+              <strong>Quem puder ajudar vai ver seu endereco e seu WhatsApp para combinar a carona.</strong>
+            </div>
+            <button className="primary-button" type="submit" disabled={!editingRequestId && hasReachedRideRequestLimit}>
+              {editingRequestId ? 'Salvar alteracoes' : 'Publicar pedido'}
+            </button>
           </form>
         </div>
         </div>
