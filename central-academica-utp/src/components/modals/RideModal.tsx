@@ -98,9 +98,11 @@ export function RideModal({ rideForm, onClose, onSubmit, onChange, mode = 'creat
               ))}
             </div>
           </fieldset>
-          <div className="details-modal-footer">
+<div className="details-modal-footer">
             <div><span className="detail-label">Destino</span><strong>Campus UTP</strong></div>
-            <button className="primary-button" type="submit">{isEditing ? 'Salvar alteracoes' : 'Publicar carona'}</button>
+            <button className="primary-button" type="submit">
+              {isEditing ? 'Salvar alteracoes' : 'Publicar carona'}
+            </button>
           </div>
         </form>
       </div>
