@@ -1,21 +1,25 @@
 import { showFeatureAlert } from '../lib/alerts'
 import { slugifyStatus } from '../lib/navigation'
-import type { DashboardStats, ModerationPost, PostStatus, Report } from '../types/app'
+import type { DashboardStats, LostItem, ModerationPost, PostStatus, Report } from '../types/app'
 
 type ModerationViewProps = {
   moderationQueue: ModerationPost[]
   reports: Report[]
   dashboard: DashboardStats
+  lostItems: LostItem[]
   onRefresh: () => void
   onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) => void
+  onMarkLostItemRecovered: (item: LostItem) => void
 }
 
 export function ModerationView({
   moderationQueue,
   reports,
   dashboard,
+  lostItems,
   onRefresh,
   onModerate,
+  onMarkLostItemRecovered,
 }: ModerationViewProps) {
   const approvedCount = moderationQueue.filter((item) => item.status === 'Aprovado').length
 
@@ -47,6 +51,26 @@ export function ModerationView({
           </div>
         </section>
         <aside className="moderation-side">
+          <section className="moderation-card">
+            <div className="moderation-card-header">
+              <div><h3>Achados e Perdidos</h3><p>Marque itens retirados pelo dono como recuperados.</p></div>
+            </div>
+            <div className="lost-admin-list">
+              {lostItems.map((item) => (
+                <article key={item.id} className="lost-admin-item">
+                  <div>
+                    <strong>{item.title}</strong>
+                    <p>{item.category} - {item.place}</p>
+                    <small>{item.date}</small>
+                  </div>
+                  <button type="button" onClick={() => onMarkLostItemRecovered(item)}>
+                    Marcar recuperado
+                  </button>
+                </article>
+              ))}
+              {lostItems.length === 0 ? <p className="empty-state-text">Nenhum item aguardando retirada.</p> : null}
+            </div>
+          </section>
           <section className="moderation-card">
             <div className="moderation-card-header"><div><h3>Alertas</h3><p>Ocorrencias recentes sinalizadas no sistema.</p></div></div>
             <div className="report-list">

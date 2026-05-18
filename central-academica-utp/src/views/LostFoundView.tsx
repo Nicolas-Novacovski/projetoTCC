@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Swal from 'sweetalert2'
 import { SearchIcon } from '../components/icons'
 import type { LostItem } from '../types/app'
+
+const lostItemReturnPlace = 'Casinha no estacionamento, proximo a entrada dos blocos A e B'
 
 type LostFoundViewProps = {
   lostItems: LostItem[]
@@ -11,22 +13,36 @@ type LostFoundViewProps = {
 export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewProps) {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [previewItemId, setPreviewItemId] = useState<number>(lostItems[0]?.id ?? 0)
+  const [lostItemSearch, setLostItemSearch] = useState('')
+
+  const normalizedSearch = lostItemSearch.trim().toLowerCase()
+  const filteredLostItems = useMemo(
+    () =>
+      normalizedSearch
+        ? lostItems.filter((item) =>
+            [item.place, item.date, item.category]
+              .filter(Boolean)
+              .some((value) => value.toLowerCase().includes(normalizedSearch)),
+          )
+        : lostItems,
+    [lostItems, normalizedSearch],
+  )
 
   useEffect(() => {
-    if (lostItems[0] && !lostItems.some((item) => item.id === previewItemId)) {
-      setPreviewItemId(lostItems[0].id)
+    if (filteredLostItems[0] && !filteredLostItems.some((item) => item.id === previewItemId)) {
+      setPreviewItemId(filteredLostItems[0].id)
     }
-  }, [lostItems, previewItemId])
+  }, [filteredLostItems, previewItemId])
 
-  const previewItem = lostItems.find((item) => item.id === previewItemId) ?? lostItems[0] ?? null
+  const previewItem = filteredLostItems.find((item) => item.id === previewItemId) ?? filteredLostItems[0] ?? null
   const selectedItem = lostItems.find((item) => item.id === selectedItemId) ?? null
 
   async function handleReturnRequest(item: LostItem) {
     await Swal.fire({
-      icon: 'success',
-      title: 'Solicitacao registrada',
-      html: `<strong>${item.title}</strong><br />Entre em contato com: ${item.contact}`,
-      confirmButtonText: 'Ok',
+      icon: 'info',
+      title: 'Orientacoes para retirada',
+      html: `<strong>${item.title}</strong><br /><br />A retirada e permitida <strong>APENAS PELO DONO</strong> do item.<br />Local: ${lostItemReturnPlace}.<br />Contato da secretaria: ${item.contact}`,
+      confirmButtonText: 'Entendi',
     })
   }
 
@@ -41,16 +57,24 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
           Registrar item
         </button>
       </div>
-      <div className="lost-found-toolbar">
-        <span className="filter-chip is-active">Todos</span>
-        <span className="filter-chip">Documentos</span>
-        <span className="filter-chip">Eletronicos</span>
-        <span className="filter-chip">Mochilas</span>
+      <article className="lost-return-notice" role="note" aria-label="Orientacoes para retirada de itens">
+        <strong>Retirada APENAS PELOS DONOS</strong>
+        <span>Itens encontrados podem ser retirados somente pelo proprietario, na casinha no estacionamento proximo a entrada dos blocos A e B.</span>
+      </article>
+      <div className="lost-found-search">
+        <SearchIcon />
+        <input
+          type="text"
+          placeholder="Pesquisar por local, data ou categoria"
+          value={lostItemSearch}
+          onChange={(event) => setLostItemSearch(event.target.value)}
+        />
+        <span>{filteredLostItems.length} resultado(s)</span>
       </div>
       {previewItem ? (
         <div className="lost-found-layout">
           <div className="lost-found-grid">
-            {lostItems.map((item) => (
+            {filteredLostItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -65,7 +89,7 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
                   <p>{item.place}</p>
                   <div className="lost-card-meta">
                     <span>{item.date}</span>
-                    <span>{item.status}</span>
+                    <span>{item.category}</span>
                   </div>
                 </div>
                 <span
@@ -90,11 +114,11 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
             <div className="lost-details-grid">
               <div><span className="detail-label">Local</span><strong>{previewItem.place}</strong></div>
               <div><span className="detail-label">Data</span><strong>{previewItem.date}</strong></div>
-              <div><span className="detail-label">Status</span><strong>{previewItem.status}</strong></div>
               <div><span className="detail-label">Registrado por</span><strong>{previewItem.foundBy}</strong></div>
+              <div><span className="detail-label">Retirada</span><strong>Apenas pelo dono</strong></div>
             </div>
             <div className="lost-details-footer">
-              <div><span className="detail-label">Contato para retirada</span><strong>{previewItem.contact}</strong></div>
+              <div><span className="detail-label">Local de retirada</span><strong>{lostItemReturnPlace}</strong></div>
               <button className="primary-button" type="button" onClick={() => setSelectedItemId(previewItem.id)}>
                 Abrir detalhe completo
               </button>
@@ -103,8 +127,8 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
         </div>
       ) : (
         <article className="lost-details-card">
-          <h3>Nenhum item registrado</h3>
-          <p>Assim que novos registros forem adicionados ao banco, eles vao aparecer aqui.</p>
+          <h3>{normalizedSearch ? 'Nenhum item encontrado' : 'Nenhum item registrado'}</h3>
+          <p>{normalizedSearch ? 'Tente pesquisar por outro local, data ou categoria.' : 'Assim que novos registros forem adicionados ao banco, eles vao aparecer aqui.'}</p>
         </article>
       )}
       {selectedItem ? (
@@ -118,13 +142,17 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
             <div className="lost-details-grid">
               <div><span className="detail-label">Local encontrado</span><strong>{selectedItem.place}</strong></div>
               <div><span className="detail-label">Data do registro</span><strong>{selectedItem.date}</strong></div>
-              <div><span className="detail-label">Status atual</span><strong>{selectedItem.status}</strong></div>
               <div><span className="detail-label">Registrado por</span><strong>{selectedItem.foundBy}</strong></div>
+              <div><span className="detail-label">Retirada</span><strong>Apenas pelo dono</strong></div>
+            </div>
+            <div className="lost-return-notice lost-return-notice-compact" role="note">
+              <strong>Retirada APENAS PELO DONO</strong>
+              <span>Compareca a casinha no estacionamento, proximo a entrada dos blocos A e B.</span>
             </div>
             <div className="details-modal-footer">
-              <div><span className="detail-label">Contato</span><strong>{selectedItem.contact}</strong></div>
+              <div><span className="detail-label">Secretaria</span><strong>{selectedItem.contact}</strong></div>
               <button className="primary-button" type="button" onClick={() => void handleReturnRequest(selectedItem)}>
-                Solicitar devolucao
+                Ver orientacoes de retirada
               </button>
             </div>
           </div>

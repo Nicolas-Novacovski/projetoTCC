@@ -18,9 +18,7 @@ export const emptyLostItemForm: LostItemForm = {
   title: '',
   place: '',
   date: '',
-  status: 'Aguardando retirada',
   category: 'Documentos',
   description: '',
   foundBy: '',
-  contact: '',
 }

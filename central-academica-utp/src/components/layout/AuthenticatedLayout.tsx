@@ -1,11 +1,17 @@
 import type { ComponentType, ReactNode, RefObject } from 'react'
 import {
+  AccessibilityIcon,
   BellIcon,
   MenuIcon,
   UserCircleIcon,
 } from '../icons'
 import type { AppUser, PageView } from '../../types/app'
-import { getPageTitle } from '../../lib/navigation'
+
+type AccessibilitySettings = {
+  largeFont: boolean
+  highContrast: boolean
+  wordSpacing: boolean
+}
 
 type MenuItem = {
   label: string
@@ -18,13 +24,18 @@ type AuthenticatedLayoutProps = {
   currentView: PageView
   isSidebarOpen: boolean
   isProfileMenuOpen: boolean
+  isAccessibilityMenuOpen: boolean
   profileMenuRef: RefObject<HTMLDivElement | null>
+  accessibilityMenuRef: RefObject<HTMLDivElement | null>
+  accessibilitySettings: AccessibilitySettings
   menuItems: MenuItem[]
   children: ReactNode
   onToggleSidebar: () => void
   onChangeView: (view: PageView) => void
   onRefresh: () => void
   onToggleProfileMenu: () => void
+  onToggleAccessibilityMenu: () => void
+  onToggleAccessibilitySetting: (setting: keyof AccessibilitySettings) => void
   onLogout: () => void
 }
 
@@ -33,17 +44,32 @@ export function AuthenticatedLayout({
   currentView,
   isSidebarOpen,
   isProfileMenuOpen,
+  isAccessibilityMenuOpen,
   profileMenuRef,
+  accessibilityMenuRef,
+  accessibilitySettings,
   menuItems,
   children,
   onToggleSidebar,
   onChangeView,
   onRefresh,
   onToggleProfileMenu,
+  onToggleAccessibilityMenu,
+  onToggleAccessibilitySetting,
   onLogout,
 }: AuthenticatedLayoutProps) {
+  const shellClasses = [
+    'app-shell',
+    isSidebarOpen ? '' : 'sidebar-collapsed',
+    accessibilitySettings.largeFont ? 'accessibility-large-font' : '',
+    accessibilitySettings.highContrast ? 'accessibility-high-contrast' : '',
+    accessibilitySettings.wordSpacing ? 'accessibility-word-spacing' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className={`app-shell${isSidebarOpen ? '' : ' sidebar-collapsed'}`}>
+    <div className={shellClasses}>
       <aside className="sidebar">
         <div className="sidebar-header">
           <span className="brand-name">{sessionUser.role === 'admin' ? 'Painel UTP' : 'Portal Tuiuti'}</span>
@@ -75,9 +101,54 @@ export function AuthenticatedLayout({
             >
               <MenuIcon />
             </button>
-            <h1>{getPageTitle(currentView)}</h1>
           </div>
           <div className="topbar-actions">
+            <div className="accessibility-menu" ref={accessibilityMenuRef}>
+              <button
+                className="icon-button accessibility-toggle"
+                type="button"
+                aria-label="Abrir opcoes de acessibilidade"
+                aria-expanded={isAccessibilityMenuOpen}
+                onClick={onToggleAccessibilityMenu}
+              >
+                <AccessibilityIcon />
+              </button>
+              {isAccessibilityMenuOpen ? (
+                <div className="accessibility-dropdown">
+                  <div className="accessibility-dropdown-header">
+                    <strong>Acessibilidade</strong>
+                    <span>Ajustes visuais</span>
+                  </div>
+                  <button
+                    className={`accessibility-option${accessibilitySettings.largeFont ? ' is-active' : ''}`}
+                    type="button"
+                    aria-pressed={accessibilitySettings.largeFont}
+                    onClick={() => onToggleAccessibilitySetting('largeFont')}
+                  >
+                    <span>Fonte maior</span>
+                    <strong>{accessibilitySettings.largeFont ? 'Ativo' : 'Inativo'}</strong>
+                  </button>
+                  <button
+                    className={`accessibility-option${accessibilitySettings.highContrast ? ' is-active' : ''}`}
+                    type="button"
+                    aria-pressed={accessibilitySettings.highContrast}
+                    onClick={() => onToggleAccessibilitySetting('highContrast')}
+                  >
+                    <span>Alto contraste</span>
+                    <strong>{accessibilitySettings.highContrast ? 'Ativo' : 'Inativo'}</strong>
+                  </button>
+                  <button
+                    className={`accessibility-option${accessibilitySettings.wordSpacing ? ' is-active' : ''}`}
+                    type="button"
+                    aria-pressed={accessibilitySettings.wordSpacing}
+                    onClick={() => onToggleAccessibilitySetting('wordSpacing')}
+                  >
+                    <span>Espacamento maior</span>
+                    <strong>{accessibilitySettings.wordSpacing ? 'Ativo' : 'Inativo'}</strong>
+                  </button>
+                </div>
+              ) : null}
+            </div>
             <button className="icon-button notification-button" type="button" aria-label="Notificacoes" onClick={onRefresh}>
               <BellIcon />
               <span className="notification-dot" aria-hidden="true" />

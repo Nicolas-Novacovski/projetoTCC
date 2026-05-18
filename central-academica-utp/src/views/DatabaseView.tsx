@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react'
 import type { AdminDatabaseSnapshot } from '../types/app'
 
 type DatabaseViewProps = {
@@ -8,7 +9,35 @@ type DatabaseViewProps = {
 
 export function DatabaseView({ snapshot, isLoading, onLoad }: DatabaseViewProps) {
   const tableEntries = snapshot ? Object.entries(snapshot.tables) : []
-  const rideRows = snapshot?.tables.caronas ?? []
+  const [selectedTable, setSelectedTable] = useState<string | null>(null)
+  const activeTableName = selectedTable && snapshot?.tables[selectedTable as keyof AdminDatabaseSnapshot['tables']]
+    ? selectedTable
+    : tableEntries[0]?.[0] ?? null
+  const activeRows = activeTableName ? snapshot?.tables[activeTableName as keyof AdminDatabaseSnapshot['tables']] ?? [] : []
+  const activeColumns = useMemo(() => {
+    const columnNames = new Set<string>()
+
+    activeRows.slice(0, 20).forEach((row) => {
+      Object.keys(row).forEach((key) => columnNames.add(key))
+    })
+
+    return [...columnNames].slice(0, 6)
+  }, [activeRows])
+
+  useEffect(() => {
+    if (!snapshot) {
+      setSelectedTable(null)
+      return
+    }
+
+    if (!activeTableName && tableEntries[0]) {
+      setSelectedTable(tableEntries[0][0])
+    }
+  }, [snapshot, activeTableName, tableEntries])
+
+  function formatTableName(tableName: string) {
+    return tableName.replaceAll('_', ' ')
+  }
 
   return (
     <section className="page-section database-section">
@@ -31,58 +60,50 @@ export function DatabaseView({ snapshot, isLoading, onLoad }: DatabaseViewProps)
         <>
           <div className="database-overview">
             {Object.entries(snapshot.totals).map(([tableName, total]) => (
-              <article key={tableName} className="overview-card">
-                <span>{tableName.replace('_', ' ')}</span>
+              <button
+                key={tableName}
+                className={`overview-card database-overview-card${activeTableName === tableName ? ' is-active' : ''}`}
+                type="button"
+                onClick={() => setSelectedTable(tableName)}
+              >
+                <span>{formatTableName(tableName)}</span>
                 <strong>{total}</strong>
-                <p>Registros encontrados na tabela {tableName}.</p>
-              </article>
+                <p>Clique para visualizar os registros desta tabela.</p>
+              </button>
             ))}
           </div>
 
           <section className="moderation-card database-focus-card">
             <div className="moderation-card-header">
               <div>
-                <h3>Moderacao de Caronas</h3>
-                <p>Visualizacao rapida dos registros da tabela `caronas` para testes e validacoes.</p>
+                <h3>{activeTableName ? formatTableName(activeTableName) : 'Tabela'}</h3>
+                <p>{activeRows.length} registros carregados. Clique em outro card acima para trocar a tabela.</p>
               </div>
             </div>
-            <div className="database-table">
-              <div className="database-table-head">
-                <span>ID</span>
-                <span>Zona</span>
-                <span>Titulo</span>
-                <span>Horario</span>
-                <span>Vagas</span>
-                <span>Status</span>
-              </div>
-              {rideRows.map((ride) => (
-                <div key={String(ride.id_carona)} className="database-table-row">
-                  <span>{String(ride.id_carona)}</span>
-                  <span>{String(ride.zona_destino)}</span>
-                  <span>{String(ride.titulo)}</span>
-                  <span>{String(ride.horario_saida)}</span>
-                  <span>{String(ride.vagas)}</span>
-                  <span>{String(ride.status_carona)}</span>
+            {activeRows.length > 0 && activeColumns.length > 0 ? (
+              <div className="database-dynamic-table">
+                <div className="database-dynamic-table-head" style={{ gridTemplateColumns: `repeat(${activeColumns.length}, minmax(120px, 1fr))` }}>
+                  {activeColumns.map((column) => <span key={column}>{column}</span>)}
                 </div>
-              ))}
+                {activeRows.map((row, rowIndex) => (
+                  <div
+                    key={`${activeTableName}-${rowIndex}`}
+                    className="database-dynamic-table-row"
+                    style={{ gridTemplateColumns: `repeat(${activeColumns.length}, minmax(120px, 1fr))` }}
+                  >
+                    {activeColumns.map((column) => (
+                      <span key={column}>{String(row[column] ?? '-')}</span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-state-text">Nenhum registro encontrado nesta tabela.</p>
+            )}
+            <div className="database-json-preview">
+              <pre>{JSON.stringify(activeRows, null, 2)}</pre>
             </div>
           </section>
-
-          <div className="database-grid">
-            {tableEntries.map(([tableName, rows]) => (
-              <section key={tableName} className="moderation-card database-card">
-                <div className="moderation-card-header">
-                  <div>
-                    <h3>{tableName}</h3>
-                    <p>{rows.length} registros carregados para teste.</p>
-                  </div>
-                </div>
-                <div className="database-json-preview">
-                  <pre>{JSON.stringify(rows, null, 2)}</pre>
-                </div>
-              </section>
-            ))}
-          </div>
         </>
       )}
     </section>

@@ -473,23 +473,25 @@ export function RidesView({
                       {request.status}
                     </span>
                   </div>
-                  <button
-                    className="inline-icon-button inline-icon-button-neutral"
-                    type="button"
-                    aria-label={`Editar pedido de carona para ${request.zone}`}
-                    onClick={() => handleStartRequestEdit(request)}
-                    disabled={request.status !== 'Aberto'}
-                  >
-                    <PencilIcon />
-                  </button>
-                  <button
-                    className="inline-icon-button inline-icon-button-danger"
-                    type="button"
-                    aria-label={`Excluir pedido de carona para ${request.zone}`}
-                    onClick={() => void handleDeleteRideRequest(request)}
-                  >
-                    <TrashIcon />
-                  </button>
+                  <div className="my-ride-request-actions">
+                    <button
+                      className="inline-icon-button inline-icon-button-neutral"
+                      type="button"
+                      aria-label={`Editar pedido de carona para ${request.zone}`}
+                      onClick={() => handleStartRequestEdit(request)}
+                      disabled={request.status !== 'Aberto'}
+                    >
+                      <PencilIcon />
+                    </button>
+                    <button
+                      className="inline-icon-button inline-icon-button-danger"
+                      type="button"
+                      aria-label={`Excluir pedido de carona para ${request.zone}`}
+                      onClick={() => void handleDeleteRideRequest(request)}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 </div>
                 <p>{request.pickupAddress}</p>
                 <p>Dias: {request.weekdays}</p>

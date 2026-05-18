@@ -11,6 +11,7 @@ import {
   getAppData,
   loginAdmin,
   loginStudent,
+  markLostItemRecovered,
   saveCareerProfile,
   updateRide,
   updateRideRequest,
@@ -120,9 +121,9 @@ router.post('/publications', async (request, response) => {
 })
 
 router.post('/lost-items', async (request, response) => {
-  const { userId, title, place, date, status, category, description, foundBy, contact } = request.body
+  const { userId, title, place, date, category, description, foundBy } = request.body
 
-  if (!userId || !title || !place || !date || !status || !category || !description || !foundBy || !contact) {
+  if (!userId || !title || !place || !date || !category || !description || !foundBy) {
     return response.status(400).json({
       status: 'error',
       message: 'Campos obrigatorios do item nao enviados.',
@@ -134,11 +135,9 @@ router.post('/lost-items', async (request, response) => {
     title,
     place,
     date,
-    status,
     category,
     description,
     foundBy,
-    contact,
   })
 
   return response.status(201).json({
@@ -329,6 +328,25 @@ router.delete('/ride-requests/:id', async (request, response) => {
   }
 
   const data = await deleteRideRequest(requestId, userId)
+
+  return response.json({
+    status: 'ok',
+    data,
+  })
+})
+
+router.patch('/lost-items/:id/recovered', async (request, response) => {
+  const itemId = Number(request.params.id)
+  const { userId, role } = request.body
+
+  if (!itemId || !userId || role !== 'admin') {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para marcar o item como recuperado.',
+    })
+  }
+
+  const data = await markLostItemRecovered(itemId, Number(userId), 'admin')
 
   return response.json({
     status: 'ok',

@@ -6,6 +6,10 @@ const importantDeadlines = [
   { title: 'Solicitacao de estagio', detail: 'Validacao em 3 dias uteis' },
 ]
 
+const secretaryEmail = 'secretaria@utp.br'
+const lostItemOpenStatus = 'Perdido'
+const lostItemRecoveredStatus = 'Recuperado'
+
 const weekdayOrder = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']
 
 function normalizeWeekdays(weekdays = []) {
@@ -344,8 +348,10 @@ export async function getAppData(userId, role) {
         `
           select *
           from achados_perdidos
+          where status_item <> $1
           order by id_item desc
         `,
+        [lostItemRecoveredStatus],
       ),
       pool.query(
         `
@@ -444,11 +450,9 @@ export async function createLostItem({
   title,
   place,
   date,
-  status,
   category,
   description,
   foundBy,
-  contact,
 }) {
   const pool = await connectToDatabase()
 
@@ -467,7 +471,7 @@ export async function createLostItem({
       )
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `,
-    [userId, title, place, date, status, category, description, foundBy, contact],
+    [userId, title, place, date, lostItemOpenStatus, category, description, foundBy, secretaryEmail],
   )
 
   return getAppData(userId, 'student')
@@ -758,6 +762,29 @@ export async function deleteRideRequest(requestId, userId) {
   }
 
   return getAppData(userId, 'student')
+}
+
+export async function markLostItemRecovered(itemId, userId, role) {
+  if (role !== 'admin') {
+    throw new Error('Apenas administradores podem marcar itens como recuperados.')
+  }
+
+  const pool = await connectToDatabase()
+  const result = await pool.query(
+    `
+      update achados_perdidos
+      set status_item = $2
+      where id_item = $1
+      returning id_item
+    `,
+    [itemId, lostItemRecoveredStatus],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Item de achados e perdidos nao encontrado.')
+  }
+
+  return getAppData(userId, role)
 }
 
 export async function updatePublicationStatus(publicationId, status, userId, role) {

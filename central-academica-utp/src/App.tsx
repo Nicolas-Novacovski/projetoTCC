@@ -32,6 +32,7 @@ import type {
   AppUser,
   CareerProfile,
   LoginMode,
+  LostItem,
   LostItemForm,
   ModerationPost,
   PageView,
@@ -44,6 +45,19 @@ import type {
 const SESSION_STORAGE_KEY = 'central-academica-utp:session-user'
 const VIEW_STORAGE_KEY = 'central-academica-utp:current-view'
 const APP_DATA_STORAGE_KEY = 'central-academica-utp:app-data'
+const ACCESSIBILITY_STORAGE_KEY = 'central-academica-utp:accessibility-settings'
+
+type AccessibilitySettings = {
+  largeFont: boolean
+  highContrast: boolean
+  wordSpacing: boolean
+}
+
+const defaultAccessibilitySettings: AccessibilitySettings = {
+  largeFont: false,
+  highContrast: false,
+  wordSpacing: false,
+}
 
 function parseWeekdays(value: string) {
   return value
@@ -87,6 +101,8 @@ function App() {
   const [adminSnapshot, setAdminSnapshot] = useState<AdminDatabaseSnapshot | null>(null)
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false)
+  const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
   const [publishForm, setPublishForm] = useState<PublishForm>({
     category: 'Vaga',
     title: '',
@@ -107,6 +123,7 @@ function App() {
   const [lostItemForm, setLostItemForm] = useState<LostItemForm>(emptyLostItemForm)
 
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
+  const accessibilityMenuRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (appData) {
@@ -170,6 +187,29 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const storedSettings = window.localStorage.getItem(ACCESSIBILITY_STORAGE_KEY)
+
+    if (!storedSettings) {
+      return
+    }
+
+    try {
+      const parsedSettings = JSON.parse(storedSettings) as Partial<AccessibilitySettings>
+      setAccessibilitySettings({
+        largeFont: Boolean(parsedSettings.largeFont),
+        highContrast: Boolean(parsedSettings.highContrast),
+        wordSpacing: Boolean(parsedSettings.wordSpacing),
+      })
+    } catch {
+      window.localStorage.removeItem(ACCESSIBILITY_STORAGE_KEY)
+    }
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem(ACCESSIBILITY_STORAGE_KEY, JSON.stringify(accessibilitySettings))
+  }, [accessibilitySettings])
+
+  useEffect(() => {
     if (!sessionUser) {
       window.localStorage.removeItem(SESSION_STORAGE_KEY)
       return
@@ -203,16 +243,27 @@ function App() {
       if (!profileMenuRef.current?.contains(event.target as Node)) {
         setIsProfileMenuOpen(false)
       }
+
+      if (!accessibilityMenuRef.current?.contains(event.target as Node)) {
+        setIsAccessibilityMenuOpen(false)
+      }
     }
 
-    if (isProfileMenuOpen) {
+    if (isProfileMenuOpen || isAccessibilityMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isProfileMenuOpen])
+  }, [isProfileMenuOpen, isAccessibilityMenuOpen])
+
+  function handleToggleAccessibilitySetting(setting: keyof AccessibilitySettings) {
+    setAccessibilitySettings((current) => ({
+      ...current,
+      [setting]: !current[setting],
+    }))
+  }
 
   async function refreshAppData(user = sessionUser) {
     if (!user) return
@@ -386,6 +437,43 @@ function App() {
     }
   }
 
+  async function handleMarkLostItemRecovered(item: LostItem) {
+    if (!sessionUser || sessionUser.role !== 'admin') return
+
+    const result = await Swal.fire({
+      icon: 'question',
+      title: 'Marcar item como recuperado?',
+      text: `O item "${item.title}" deixara de aparecer para os alunos.`,
+      showCancelButton: true,
+      confirmButtonText: 'Marcar recuperado',
+      cancelButtonText: 'Cancelar',
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      const response = await requestJson<{ data: AppData }>(`/api/lost-items/${item.id}/recovered`, {
+        method: 'PATCH',
+        body: JSON.stringify({ userId: sessionUser.id, role: sessionUser.role }),
+      })
+
+      setAppData(response.data)
+
+      if (adminSnapshot) {
+        await loadAdminSnapshot(sessionUser)
+      }
+
+      await toast.fire({ icon: 'success', title: 'Item marcado como recuperado.' })
+    } catch (error) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Falha ao atualizar item',
+        text: error instanceof Error ? error.message : 'Nao foi possivel marcar o item como recuperado.',
+        confirmButtonText: 'Fechar',
+      })
+    }
+  }
+
   async function handleApply(postTitle: string) {
     await toast.fire({ icon: 'success', title: `Interesse registrado em "${postTitle}".` })
   }
@@ -484,8 +572,7 @@ function App() {
       !lostItemForm.date.trim() ||
       !lostItemForm.category.trim() ||
       !lostItemForm.description.trim() ||
-      !lostItemForm.foundBy.trim() ||
-      !lostItemForm.contact.trim()
+      !lostItemForm.foundBy.trim()
     ) {
       await Swal.fire({
         icon: 'warning',
@@ -605,12 +692,23 @@ function App() {
         currentView={currentView}
         isSidebarOpen={isSidebarOpen}
         isProfileMenuOpen={isProfileMenuOpen}
+        isAccessibilityMenuOpen={isAccessibilityMenuOpen}
         profileMenuRef={profileMenuRef}
+        accessibilityMenuRef={accessibilityMenuRef}
+        accessibilitySettings={accessibilitySettings}
         menuItems={menuItems}
         onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         onChangeView={setCurrentView}
         onRefresh={() => void refreshAppData()}
-        onToggleProfileMenu={() => setIsProfileMenuOpen((current) => !current)}
+        onToggleProfileMenu={() => {
+          setIsProfileMenuOpen((current) => !current)
+          setIsAccessibilityMenuOpen(false)
+        }}
+        onToggleAccessibilityMenu={() => {
+          setIsAccessibilityMenuOpen((current) => !current)
+          setIsProfileMenuOpen(false)
+        }}
+        onToggleAccessibilitySetting={handleToggleAccessibilitySetting}
         onLogout={() => void handleLogout()}
       >
         {currentView === 'home' ? <HomeView dashboard={appData.dashboard} /> : null}
@@ -730,8 +828,10 @@ function App() {
             moderationQueue={appData.moderationQueue}
             reports={appData.reports}
             dashboard={appData.dashboard}
+            lostItems={appData.lostItems}
             onRefresh={() => void refreshAppData()}
             onModerate={(status, item) => void handleModerationAction(status, item)}
+            onMarkLostItemRecovered={(item) => void handleMarkLostItemRecovered(item)}
           />
         ) : null}
         {currentView === 'database' ? (

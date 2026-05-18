@@ -12,6 +12,8 @@ const demoAdmin = {
   password: 'moderacao123',
 }
 
+const secretaryEmail = 'secretaria@utp.br'
+
 async function ensureDatabaseSchema(pool) {
   await pool.query(`
     create table if not exists usuarios (
@@ -90,11 +92,11 @@ async function ensureDatabaseSchema(pool) {
       titulo varchar(160) not null,
       local_encontrado varchar(160) not null,
       data_hora varchar(60) not null,
-      status_item varchar(80) not null,
+      status_item varchar(80) not null default 'Perdido',
       categoria varchar(60) not null,
       descricao text not null,
       encontrado_por varchar(120) not null,
-      contato_retirada varchar(160) not null
+      contato_retirada varchar(160) not null default 'secretaria@utp.br'
     )
   `)
 
@@ -128,6 +130,8 @@ async function ensureDatabaseSchema(pool) {
   await pool.query(`alter table pedidos_caronas add column if not exists dias_semana text[]`)
   await pool.query(`alter table caronas alter column dias_semana drop not null`)
   await pool.query(`alter table pedidos_caronas alter column dias_semana drop not null`)
+  await pool.query(`alter table achados_perdidos alter column status_item set default 'Perdido'`)
+  await pool.query(`alter table achados_perdidos alter column contato_retirada set default 'secretaria@utp.br'`)
 
   await pool.query(`
     do $$
@@ -482,7 +486,7 @@ async function ensureLostItem(pool, studentId, values) {
       values.category,
       values.description,
       values.foundBy,
-      values.contact,
+      secretaryEmail,
     ],
   )
 }
@@ -604,24 +608,22 @@ export async function ensureSeedData() {
     title: 'Mochila preta com caderno azul',
     place: 'Bloco C - Laboratorio 2',
     date: 'Hoje, 11:40',
-    status: 'Encontrado na recepcao',
+    status: 'Perdido',
     category: 'Mochilas',
     description:
       'Mochila preta de tecido com um caderno universitario azul e estojo pequeno no bolso frontal.',
     foundBy: 'Recepcao do bloco C',
-    contact: 'apoio.academico@utp.br',
   })
 
   await ensureLostItem(pool, studentId, {
     title: 'Carteirinha de estudante',
     place: 'Patio principal',
     date: 'Hoje, 09:20',
-    status: 'Aguardando retirada',
+    status: 'Perdido',
     category: 'Documentos',
     description:
       'Carteirinha em nome de Beatriz Souza, encontrada proxima aos bancos centrais do patio.',
     foundBy: 'Equipe de apoio ao aluno',
-    contact: 'secretaria@utp.br',
   })
 
   await ensureReport(pool, {

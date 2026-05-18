@@ -262,6 +262,73 @@
   background: var(--page-bg);
 }
 
+.accessibility-large-font {
+  font-size: 118%;
+}
+
+.accessibility-word-spacing :where(h1, h2, h3, h4, p, span, strong, small, button, input, textarea, select, label, li, a) {
+  word-spacing: 0.18em;
+}
+
+.accessibility-high-contrast {
+  background: #000000;
+  color: #ffff00;
+}
+
+.accessibility-high-contrast :where(.main-content, .topbar, .login-page, .login-panel, .login-hero, .login-card, .home-card, .career-card, .resume-upload-card, .rides-action-hero, .rides-summary-card, .rides-search-panel, .ride-card, .lost-card, .lost-details-card, .rides-list-panel, .ride-request-card, .my-ride-request-card, .moderation-card, .overview-card, .database-card, .database-focus-card, .database-empty-card, .details-modal, .profile-dropdown, .accessibility-dropdown, .lost-return-notice, .rides-disclaimer, .rides-request-limit-warning, .ride-meta-grid div, .ride-request-meta div, .lost-details-grid div, .lost-details-footer, .database-table-row, .moderation-row, .report-item, .weekday-fieldset, .weekday-option, .lost-found-search) {
+  border-color: #ffff00;
+  background: #000000;
+  color: #ffff00;
+  box-shadow: none;
+}
+
+.accessibility-high-contrast .sidebar {
+  background: #000000;
+  border-right: 2px solid #ffff00;
+  box-shadow: none;
+}
+
+.accessibility-high-contrast :where(h1, h2, h3, h4, p, span, strong, small, label, li, a, .detail-label, .ride-meta-label, .map-legend) {
+  color: #ffff00;
+}
+
+.accessibility-high-contrast :where(input, textarea, select) {
+  border-color: #ffff00;
+  background: #000000;
+  color: #ffff00;
+}
+
+.accessibility-high-contrast :where(button, .ghost-button, .primary-button, .secondary-button, .profile-button, .icon-button, .accessibility-option, .session-button, .sidebar-link) {
+  border: 1px solid #ffff00;
+  background: #000000;
+  color: #ffff00;
+  box-shadow: none;
+}
+
+.accessibility-high-contrast :where(button:hover, .sidebar-link:hover, .sidebar-link.is-active, .accessibility-option.is-active) {
+  background: #ffff00;
+  color: #000000;
+}
+
+.accessibility-high-contrast :where(svg) {
+  stroke: currentColor;
+}
+
+.accessibility-high-contrast :where(.status-pill, .detail-tag, .filter-chip, .ride-badge, .card-tag, .login-eyebrow) {
+  border: 1px solid #ffff00;
+  background: #000000;
+  color: #ffff00;
+}
+
+.accessibility-high-contrast :where(.notification-dot) {
+  background: #ffff00;
+  border-color: #000000;
+}
+
+.accessibility-high-contrast :where(input::placeholder, textarea::placeholder) {
+  color: #ffff99;
+}
+
 .sidebar {
   width: 272px;
   background: linear-gradient(180deg, #3583a6 0%, #3789ad 100%);
@@ -437,6 +504,89 @@
 
 .profile-menu {
   position: relative;
+}
+
+.accessibility-menu {
+  position: relative;
+}
+
+.accessibility-toggle.is-active,
+.accessibility-toggle:hover {
+  background: #f1f6fa;
+}
+
+.accessibility-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  padding: 12px;
+  border: 1px solid #dce7ee;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 40px rgba(15, 48, 68, 0.16);
+  z-index: 25;
+}
+
+.accessibility-dropdown-header {
+  padding: 4px 4px 12px;
+  border-bottom: 1px solid #ebf1f5;
+}
+
+.accessibility-dropdown-header strong {
+  display: block;
+  color: #163a54;
+  font-size: 14px;
+}
+
+.accessibility-dropdown-header span {
+  display: block;
+  margin-top: 4px;
+  color: #6a8597;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.accessibility-option {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid #dce7ee;
+  border-radius: 12px;
+  background: #f8fbfd;
+  color: #163a54;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.accessibility-option span {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.accessibility-option strong {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf4f8;
+  color: #5b7687;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.accessibility-option.is-active {
+  border-color: #9ec6db;
+  background: #eaf5fb;
+}
+
+.accessibility-option.is-active strong {
+  background: #163a54;
+  color: #ffffff;
 }
 
 .profile-button {
@@ -1029,6 +1179,84 @@
   margin-bottom: 22px;
 }
 
+.lost-found-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  margin-bottom: 22px;
+  padding: 0 16px;
+  border: 1px solid #d8e6ee;
+  border-radius: 16px;
+  background: #f8fbfd;
+  color: #5b7687;
+}
+
+.lost-found-search svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+.lost-found-search input {
+  flex: 1;
+  min-width: 0;
+  height: 50px;
+  border: 0;
+  background: transparent;
+  color: #163a54;
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.lost-found-search input::placeholder {
+  color: #7b95a5;
+}
+
+.lost-found-search span {
+  color: #628093;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lost-return-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+  padding: 18px 20px;
+  border: 1px solid #f0d8a8;
+  border-radius: 16px;
+  background: #fff8e8;
+  color: #6f5108;
+}
+
+.lost-return-notice strong {
+  color: #8a6508;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.lost-return-notice span {
+  color: #6f5108;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.lost-return-notice-compact {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
 .filter-chip {
   display: inline-flex;
   align-items: center;
@@ -1485,7 +1713,9 @@
 }
 
 .overview-card {
+  border: 0;
   padding: 22px;
+  text-align: left;
 }
 
 .overview-card span {
@@ -1528,6 +1758,25 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
+}
+
+.database-overview-card {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.database-overview-card:hover,
+.database-overview-card.is-active {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(16, 59, 82, 0.12);
+}
+
+.database-overview-card.is-active {
+  border: 1px solid #9ec6db;
+  background: linear-gradient(180deg, #ffffff 0%, #eef7fc 100%);
 }
 
 .database-focus-card,
@@ -1573,7 +1822,46 @@
   font-size: 14px;
 }
 
+.database-dynamic-table {
+  display: grid;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.database-dynamic-table-head,
+.database-dynamic-table-row {
+  display: grid;
+  gap: 12px;
+  min-width: max-content;
+  align-items: center;
+}
+
+.database-dynamic-table-head {
+  padding: 0 4px;
+  color: #7690a2;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.database-dynamic-table-row {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #f7fafc;
+  color: #466579;
+  font-size: 14px;
+}
+
+.database-dynamic-table-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .database-json-preview {
+  margin-top: 18px;
   max-height: 280px;
   overflow: auto;
   padding: 16px;
@@ -2190,6 +2478,13 @@
   margin-bottom: 10px;
 }
 
+.my-ride-request-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .my-ride-request-title-group {
   display: flex;
   flex-wrap: wrap;
@@ -2243,6 +2538,10 @@
   color: #c24a5d;
 }
 
+.inline-icon-button-danger svg {
+  color: #c24a5d;
+}
+
 .inline-icon-button svg {
   width: 16px;
   height: 16px;
@@ -2262,6 +2561,60 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.lost-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lost-admin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f7fafc;
+}
+
+.lost-admin-item strong {
+  display: block;
+  color: #163a54;
+  font-size: 15px;
+}
+
+.lost-admin-item p {
+  margin: 5px 0 0;
+  color: #668194;
+  font-size: 13px;
+}
+
+.lost-admin-item small {
+  display: block;
+  margin-top: 4px;
+  color: #7a93a4;
+  font-size: 12px;
+}
+
+.lost-admin-item button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #e8f7ee;
+  color: #157f3b;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.empty-state-text {
+  margin: 0;
+  color: #668194;
+  font-size: 14px;
 }
 
 .report-item {
@@ -2452,6 +2805,11 @@
   .lost-card {
     grid-template-columns: 1fr;
     align-items: flex-start;
+  }
+
+  .lost-return-notice {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .details-modal-header,

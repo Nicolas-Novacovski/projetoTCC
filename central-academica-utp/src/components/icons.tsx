@@ -26,6 +26,10 @@ export function BellIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18h6" /><path d="M6 17h12l-1.4-1.6a2 2 0 0 1-.5-1.3V11a4 4 0 1 0-8 0v3.1c0 .5-.2 1-.5 1.3L6 17Z" /><path d="M10 18a2 2 0 0 0 4 0" /></svg>
 }
 
+export function AccessibilityIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19 9 6h2l5 13" /><path d="M7 14h6" /><path d="M15 9h5" /><path d="M17.5 6v6" /></svg>
+}
+
 export function CalendarIcon() {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M8 3v4M16 3v4M4 10h16" /></svg>
 }

@@ -60,11 +60,9 @@ export type LostItemForm = {
   title: string
   place: string
   date: string
-  status: string
   category: string
   description: string
   foundBy: string
-  contact: string
 }
 
 export type PublishForm = { category: string; title: string; location: string; description: string }
