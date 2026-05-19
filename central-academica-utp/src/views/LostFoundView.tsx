@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Swal from 'sweetalert2'
 import { SearchIcon } from '../components/icons'
 import type { LostItem } from '../types/app'
@@ -12,7 +12,7 @@ type LostFoundViewProps = {
 
 export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewProps) {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
-  const [previewItemId, setPreviewItemId] = useState<number>(lostItems[0]?.id ?? 0)
+  const [previewItemId, setPreviewItemId] = useState<number | null>(null)
   const [lostItemSearch, setLostItemSearch] = useState('')
 
   const normalizedSearch = lostItemSearch.trim().toLowerCase()
@@ -28,13 +28,10 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
     [lostItems, normalizedSearch],
   )
 
-  useEffect(() => {
-    if (filteredLostItems[0] && !filteredLostItems.some((item) => item.id === previewItemId)) {
-      setPreviewItemId(filteredLostItems[0].id)
-    }
-  }, [filteredLostItems, previewItemId])
-
-  const previewItem = filteredLostItems.find((item) => item.id === previewItemId) ?? filteredLostItems[0] ?? null
+  const effectivePreviewItemId = filteredLostItems.some((item) => item.id === previewItemId)
+    ? previewItemId
+    : filteredLostItems[0]?.id ?? null
+  const previewItem = filteredLostItems.find((item) => item.id === effectivePreviewItemId) ?? null
   const selectedItem = lostItems.find((item) => item.id === selectedItemId) ?? null
 
   async function handleReturnRequest(item: LostItem) {
@@ -78,7 +75,7 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
               <button
                 key={item.id}
                 type="button"
-                className={`lost-card${previewItemId === item.id ? ' is-active' : ''}`}
+                className={`lost-card${effectivePreviewItemId === item.id ? ' is-active' : ''}`}
                 onClick={() => setPreviewItemId(item.id)}
               >
                 <div className="lost-card-icon">

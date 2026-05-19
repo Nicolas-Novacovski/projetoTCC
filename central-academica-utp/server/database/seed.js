@@ -36,6 +36,7 @@ async function ensureDatabaseSchema(pool) {
       categoria varchar(60) not null,
       titulo varchar(160) not null,
       local_empresa varchar(160),
+      email_contato varchar(160),
       descricao text not null,
       status_moderacao varchar(30) not null default 'Pendente',
       data_submissao timestamp without time zone not null default now()
@@ -115,6 +116,19 @@ async function ensureDatabaseSchema(pool) {
   `)
 
   await pool.query(`
+    create table if not exists candidaturas_vagas (
+      id_candidatura serial primary key,
+      id_publicacao integer references publicacoes_mural(id_publicacao) on delete cascade,
+      id_usuario integer references usuarios(id_usuario) on delete set null,
+      email_aluno varchar(160) not null,
+      email_contato_vaga varchar(160) not null,
+      curriculo varchar(255),
+      status_email varchar(40) not null default 'Pendente',
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+
+  await pool.query(`
     create table if not exists denuncias (
       id_denuncia serial primary key,
       titulo varchar(160) not null,
@@ -124,7 +138,32 @@ async function ensureDatabaseSchema(pool) {
     )
   `)
 
+  await pool.query(`
+    create table if not exists logs_auditoria (
+      id_log serial primary key,
+      id_usuario integer references usuarios(id_usuario) on delete set null,
+      acao varchar(120) not null,
+      entidade varchar(80) not null,
+      id_entidade integer,
+      detalhe jsonb,
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+
   await pool.query(`alter table usuarios add column if not exists nome varchar(120)`)
+  await pool.query(`alter table usuarios add column if not exists data_criacao timestamp without time zone not null default now()`)
+  await pool.query(`alter table publicacoes_mural add column if not exists email_contato varchar(160)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists email_contato varchar(160)`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists data_criacao timestamp without time zone not null default now()`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists status_email varchar(40) not null default 'Pendente'`)
+  await pool.query(`alter table solicitacoes_caronas add column if not exists data_criacao timestamp without time zone not null default now()`)
+  await pool.query(`alter table pedidos_caronas add column if not exists data_criacao timestamp without time zone not null default now()`)
+  await pool.query(`alter table denuncias add column if not exists data_criacao timestamp without time zone not null default now()`)
+  await pool.query(`alter table logs_auditoria add column if not exists acao varchar(120) not null default 'ACAO_NAO_INFORMADA'`)
+  await pool.query(`alter table logs_auditoria add column if not exists entidade varchar(80) not null default 'sistema'`)
+  await pool.query(`alter table logs_auditoria add column if not exists id_entidade integer`)
+  await pool.query(`alter table logs_auditoria add column if not exists detalhe jsonb`)
+  await pool.query(`alter table logs_auditoria add column if not exists data_criacao timestamp without time zone not null default now()`)
   await pool.query(`alter table pedidos_caronas add column if not exists motorista_aceitou_whatsapp varchar(30)`)
   await pool.query(`alter table caronas add column if not exists dias_semana text[]`)
   await pool.query(`alter table pedidos_caronas add column if not exists dias_semana text[]`)
@@ -218,6 +257,8 @@ async function ensureDatabaseIndexes(pool) {
   await pool.query(`create index if not exists idx_usuarios_login_admin on usuarios (login_admin)`)
   await pool.query(`create index if not exists idx_publicacoes_status_data on publicacoes_mural (status_moderacao, data_submissao desc)`)
   await pool.query(`create index if not exists idx_publicacoes_autor on publicacoes_mural (id_autor)`)
+  await pool.query(`create index if not exists idx_candidaturas_vagas_usuario on candidaturas_vagas (id_usuario, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_candidaturas_vagas_publicacao on candidaturas_vagas (id_publicacao, data_criacao desc)`)
   await pool.query(`create index if not exists idx_caronas_status_data on caronas (status_carona, id_carona desc)`)
   await pool.query(`create index if not exists idx_caronas_motorista on caronas (id_motorista, id_carona desc)`)
   await pool.query(`create index if not exists idx_caronas_dias_semana on caronas using gin (dias_semana)`)
@@ -229,6 +270,9 @@ async function ensureDatabaseIndexes(pool) {
   await pool.query(`create index if not exists idx_perfis_profissionais_usuario on perfis_profissionais (id_usuario, id_perfil desc)`)
   await pool.query(`create index if not exists idx_achados_perdidos_data on achados_perdidos (id_item desc)`)
   await pool.query(`create index if not exists idx_denuncias_data on denuncias (data_criacao desc, id_denuncia desc)`)
+  await pool.query(`create index if not exists idx_logs_auditoria_data on logs_auditoria (data_criacao desc, id_log desc)`)
+  await pool.query(`create index if not exists idx_logs_auditoria_usuario on logs_auditoria (id_usuario, data_criacao desc)`)
+  await pool.query(`create index if not exists idx_logs_auditoria_entidade on logs_auditoria (entidade, id_entidade)`)
 }
 
 async function syncSequence(pool, tableName, idColumn) {
@@ -343,18 +387,20 @@ async function ensureCareerProfile(pool, studentId) {
         curso,
         semestre,
         arquivo_curriculo,
+        email_contato,
         area_desejada,
         pretensao_salarial,
         modelo_trabalho,
         cidade_preferencia
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `,
     [
       studentId,
       'Analise e Desenvolvimento de Sistemas',
       '4 semestre',
       'curriculo-nicolas.pdf',
+      'nicolas@aluno.utp.br',
       'Desenvolvimento Front-end',
       'R$ 1.800 a R$ 2.500',
       'Hibrido',
@@ -385,17 +431,19 @@ async function ensurePublication(pool, studentId, values) {
         categoria,
         titulo,
         local_empresa,
+        email_contato,
         descricao,
         status_moderacao,
         data_submissao
       )
-      values ($1, $2, $3, $4, $5, $6, now())
+      values ($1, $2, $3, $4, $5, $6, $7, now())
     `,
     [
       studentId,
       values.category,
       values.title,
       values.location,
+      values.contactEmail ?? secretaryEmail,
       values.description,
       values.status,
     ],
@@ -539,6 +587,7 @@ export async function ensureSeedData() {
   await syncSequence(pool, 'denuncias', 'id_denuncia')
   await syncSequence(pool, 'solicitacoes_caronas', 'id_solicitacao')
   await syncSequence(pool, 'pedidos_caronas', 'id_pedido')
+  await syncSequence(pool, 'candidaturas_vagas', 'id_candidatura')
 
   const studentId = await findOrCreateStudent(pool)
   await findOrCreateAdmin(pool)
@@ -548,6 +597,7 @@ export async function ensureSeedData() {
     category: 'Vaga',
     title: 'Estagio em Desenvolvimento Web',
     location: 'TechSolutions Curitiba - Hibrido',
+    contactEmail: 'rh@techsolutions.example',
     description:
       'Estamos buscando estagiarios apaixonados por React e Node.js para um plano de desenvolvimento com possibilidade de efetivacao.',
     status: 'Aprovado',

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import Swal from 'sweetalert2'
 import './App.css'
@@ -35,6 +35,7 @@ import type {
   LostItem,
   LostItemForm,
   ModerationPost,
+  MuralPost,
   PageView,
   PostStatus,
   PublishForm,
@@ -99,14 +100,17 @@ function App() {
   const [isLostItemModalOpen, setIsLostItemModalOpen] = useState(false)
   const [editingRideId, setEditingRideId] = useState<number | null>(null)
   const [adminSnapshot, setAdminSnapshot] = useState<AdminDatabaseSnapshot | null>(null)
+  const [appliedPostIds, setAppliedPostIds] = useState<number[]>([])
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false)
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
   const [publishForm, setPublishForm] = useState<PublishForm>({
     category: 'Vaga',
     title: '',
     location: '',
+    contactEmail: '',
     description: '',
   })
   const [rideForm, setRideForm] = useState<RideForm>({
@@ -124,12 +128,20 @@ function App() {
 
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
   const accessibilityMenuRef = useRef<HTMLDivElement | null>(null)
+  const notificationsMenuRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    if (appData) {
-      setCareerProfile(appData.careerProfile)
-    }
-  }, [appData])
+  const refreshAppDataForUser = useCallback(async (user: AppUser) => {
+    if (!user) return
+    const data = await requestJson<AppData>(`/api/app-data?userId=${user.id}&role=${user.role}`)
+    setAppData(data)
+    setCareerProfile(data.careerProfile)
+    setAppliedPostIds(data.appliedPostIds ?? [])
+  }, [])
+
+  const refreshAppData = useCallback(async (user = sessionUser) => {
+    if (!user) return
+    await refreshAppDataForUser(user)
+  }, [refreshAppDataForUser, sessionUser])
 
   useEffect(() => {
     const storedSession = window.localStorage.getItem(SESSION_STORAGE_KEY)
@@ -172,19 +184,20 @@ function App() {
         const parsedData = JSON.parse(storedAppData) as AppData
         setAppData(parsedData)
         setCareerProfile(parsedData.careerProfile)
+        setAppliedPostIds(parsedData.appliedPostIds ?? [])
       } catch {
         window.localStorage.removeItem(APP_DATA_STORAGE_KEY)
       }
     }
 
-    void refreshAppData(parsedSession)
+    void refreshAppDataForUser(parsedSession)
       .catch((error) => {
         console.warn('Nao foi possivel atualizar a sessao restaurada.', error)
       })
       .finally(() => {
         setIsRestoringSession(false)
       })
-  }, [])
+  }, [refreshAppDataForUser])
 
   useEffect(() => {
     const storedSettings = window.localStorage.getItem(ACCESSIBILITY_STORAGE_KEY)
@@ -207,6 +220,16 @@ function App() {
 
   useEffect(() => {
     window.localStorage.setItem(ACCESSIBILITY_STORAGE_KEY, JSON.stringify(accessibilitySettings))
+  }, [accessibilitySettings])
+
+  useEffect(() => {
+    document.body.classList.toggle('accessibility-large-font', accessibilitySettings.largeFont)
+    document.body.classList.toggle('accessibility-high-contrast', accessibilitySettings.highContrast)
+    document.body.classList.toggle('accessibility-word-spacing', accessibilitySettings.wordSpacing)
+
+    return () => {
+      document.body.classList.remove('accessibility-large-font', 'accessibility-high-contrast', 'accessibility-word-spacing')
+    }
   }, [accessibilitySettings])
 
   useEffect(() => {
@@ -247,29 +270,26 @@ function App() {
       if (!accessibilityMenuRef.current?.contains(event.target as Node)) {
         setIsAccessibilityMenuOpen(false)
       }
+
+      if (!notificationsMenuRef.current?.contains(event.target as Node)) {
+        setIsNotificationsOpen(false)
+      }
     }
 
-    if (isProfileMenuOpen || isAccessibilityMenuOpen) {
+    if (isProfileMenuOpen || isAccessibilityMenuOpen || isNotificationsOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isProfileMenuOpen, isAccessibilityMenuOpen])
+  }, [isProfileMenuOpen, isAccessibilityMenuOpen, isNotificationsOpen])
 
   function handleToggleAccessibilitySetting(setting: keyof AccessibilitySettings) {
     setAccessibilitySettings((current) => ({
       ...current,
       [setting]: !current[setting],
     }))
-  }
-
-  async function refreshAppData(user = sessionUser) {
-    if (!user) return
-    const data = await requestJson<AppData>(`/api/app-data?userId=${user.id}&role=${user.role}`)
-    setAppData(data)
-    setCareerProfile(data.careerProfile)
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
@@ -291,6 +311,8 @@ function App() {
 
         setSessionUser(response.user)
         setAppData(response.data)
+        setCareerProfile(response.data.careerProfile)
+        setAppliedPostIds(response.data.appliedPostIds ?? [])
         setCurrentView('home')
       } else {
         if (!adminLogin.trim() || !adminPassword.trim()) {
@@ -304,6 +326,8 @@ function App() {
 
         setSessionUser(response.user)
         setAppData(response.data)
+        setCareerProfile(response.data.careerProfile)
+        setAppliedPostIds(response.data.appliedPostIds ?? [])
         setCurrentView('moderation')
       }
 
@@ -367,15 +391,20 @@ function App() {
     try {
       const response = await requestJson<{ data: AppData }>('/api/publications', {
         method: 'POST',
-        body: JSON.stringify({ userId: sessionUser.id, ...publishForm }),
+        body: JSON.stringify({ userId: sessionUser.id, role: sessionUser.role, ...publishForm }),
       })
 
       setAppData(response.data)
       setCareerProfile(response.data.careerProfile)
       setIsPublishModalOpen(false)
-      setPublishForm({ category: 'Vaga', title: '', location: '', description: '' })
+      setPublishForm({ category: 'Vaga', title: '', location: '', contactEmail: '', description: '' })
 
-      await toast.fire({ icon: 'success', title: 'Publicacao enviada para moderacao.' })
+      await toast.fire({
+        icon: 'success',
+        title: sessionUser.role === 'admin'
+          ? 'Publicacao aprovada e exibida no mural.'
+          : 'Publicacao enviada para moderacao.',
+      })
     } catch (error) {
       await Swal.fire({
         icon: 'error',
@@ -474,8 +503,130 @@ function App() {
     }
   }
 
-  async function handleApply(postTitle: string) {
-    await toast.fire({ icon: 'success', title: `Interesse registrado em "${postTitle}".` })
+  async function handleApply(post: MuralPost) {
+    const jobContactEmail = post.contactEmail || 'secretaria@utp.br'
+    const missingProfileItems = [
+      !careerProfile.resumeFileName ? 'curriculo' : null,
+      !careerProfile.contactEmail ? 'e-mail de contato' : null,
+      !careerProfile.course ? 'curso' : null,
+      !careerProfile.desiredArea ? 'area desejada' : null,
+    ].filter(Boolean)
+
+    if (missingProfileItems.length > 0) {
+      const missingText = missingProfileItems.join(', ')
+      const result = await Swal.fire({
+        icon: 'info',
+        title: 'Complete seu perfil antes de declarar interesse',
+        html: `Para enviar um interesse mais completo, preencha: <strong>${missingText}</strong>.`,
+        showCancelButton: true,
+        confirmButtonText: 'Ir para perfil',
+        cancelButtonText: 'Continuar mesmo assim',
+      })
+
+      if (result.isConfirmed) {
+        setCurrentView('career')
+        return
+      }
+    }
+
+    const result = await Swal.fire({
+      title: 'Declarar interesse na vaga?',
+      showCancelButton: true,
+      confirmButtonText: 'Enviar interesse',
+      cancelButtonText: 'Revisar depois',
+      buttonsStyling: false,
+      customClass: {
+        popup: 'application-popup',
+        confirmButton: 'application-popup-confirm',
+        cancelButton: 'application-popup-cancel',
+      },
+      html: `
+        <div class="application-review">
+          <span class="detail-tag">Pre-visualizacao</span>
+          <h2>${post.title}</h2>
+          <p>${post.subtitle}</p>
+          <div class="application-review-grid">
+            <div><span>Aluno</span><strong>${sessionUser?.name ?? 'Estudante UTP'}</strong></div>
+            <div><span>E-mail</span><strong>${careerProfile.contactEmail || 'Nao informado'}</strong></div>
+            <div><span>Curso</span><strong>${careerProfile.course || 'Nao informado'}</strong></div>
+            <div><span>Area</span><strong>${careerProfile.desiredArea || 'Nao informada'}</strong></div>
+            <div><span>Curriculo</span><strong>${careerProfile.resumeFileName || 'Nao anexado'}</strong></div>
+            <div><span>Contato da vaga</span><strong>${jobContactEmail}</strong></div>
+          </div>
+          <p class="application-review-note">Seu interesse ficara registrado visualmente nesta sessao e usa os dados atuais do perfil profissional.</p>
+        </div>
+      `,
+    })
+
+    if (!result.isConfirmed) {
+      return
+    }
+
+    try {
+      void Swal.fire({
+        title: 'Enviando informacoes...',
+        html: `
+          <div class="application-loading-state">
+            <span class="application-loading-spinner" aria-hidden="true"></span>
+            <p>Estamos encaminhando os dados da vaga para seu e-mail.</p>
+          </div>
+        `,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        customClass: {
+          popup: 'application-popup application-loading-popup',
+        },
+      })
+
+      const response = await requestJson<{
+        application: {
+          emailSent: boolean
+          emailMessage: string
+          contactEmail: string
+        }
+      }>('/api/applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          userId: sessionUser?.id,
+          publicationId: post.id,
+          studentName: sessionUser?.name,
+        }),
+      })
+
+      setAppliedPostIds((current) => (current.includes(post.id) ? current : [...current, post.id]))
+
+      await Swal.fire({
+        icon: response.application.emailSent ? 'success' : 'info',
+        title: response.application.emailSent ? 'Interesse declarado' : 'Interesse registrado sem envio automatico',
+        confirmButtonText: 'Entendi',
+        customClass: {
+          popup: 'application-popup',
+          confirmButton: 'application-popup-confirm',
+        },
+        buttonsStyling: false,
+        html: `
+          <div class="application-result">
+            <p>${response.application.emailMessage}</p>
+            <div class="application-disclaimer">
+              <strong>Aviso importante</strong>
+              <p>A Central Academica nao realiza a inscricao do aluno na vaga e nao se responsabiliza pelo processo seletivo. Nos apenas encaminhamos as informacoes ao aluno. O estudante deve entrar em contato com a empresa, enviar o curriculo quando necessario e acompanhar todas as etapas diretamente com o responsavel pela oportunidade.</p>
+            </div>
+            <div class="application-contact-box">
+              <span>Contato da vaga</span>
+              <strong>${response.application.contactEmail}</strong>
+            </div>
+          </div>
+        `,
+      })
+    } catch (error) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Falha ao declarar interesse',
+        text: error instanceof Error ? error.message : 'Nao foi possivel registrar seu interesse.',
+        confirmButtonText: 'Entendi',
+      })
+    }
   }
 
   async function handleRideSubmit(event: FormEvent<HTMLFormElement>) {
@@ -685,6 +836,46 @@ function App() {
     { label: 'Banco', icon: GridIcon, view: 'database' as PageView, visible: sessionUser.role === 'admin' },
   ].filter((item) => item.visible)
 
+  const notifications = [
+    !careerProfile.resumeFileName || !careerProfile.contactEmail || !careerProfile.course || !careerProfile.desiredArea
+      ? {
+          id: 'career-profile',
+          title: 'Perfil profissional incompleto',
+          detail: 'Complete curriculo, e-mail, curso e area desejada para declarar interesse em vagas.',
+          tone: 'warning' as const,
+        }
+      : {
+          id: 'career-ready',
+          title: 'Perfil pronto para vagas',
+          detail: 'Seu perfil possui os dados principais para declarar interesse em vagas.',
+          tone: 'success' as const,
+        },
+    appData.moderationQueue.length > 0 && sessionUser.role === 'admin'
+      ? {
+          id: 'moderation',
+          title: 'Itens aguardando moderacao',
+          detail: `${appData.moderationQueue.length} publicacao(es) precisam de revisao.`,
+          tone: 'warning' as const,
+        }
+      : null,
+    appData.rideRequestsInbox.some((request) => request.status === 'Aceito' && request.requesterId === sessionUser.id)
+      ? {
+          id: 'ride-accepted',
+          title: 'Pedido de carona aceito',
+          detail: 'Ha um motorista disponivel em seus pedidos de carona.',
+          tone: 'success' as const,
+        }
+      : null,
+    appliedPostIds.length > 0
+      ? {
+          id: 'applications',
+          title: 'Interesses registrados',
+          detail: `${appliedPostIds.length} interesse(s) registrado(s) nesta sessao.`,
+          tone: 'info' as const,
+        }
+      : null,
+  ].filter((item): item is { id: string; title: string; detail: string; tone: 'info' | 'warning' | 'success' } => Boolean(item))
+
   return (
     <>
       <AuthenticatedLayout
@@ -693,9 +884,12 @@ function App() {
         isSidebarOpen={isSidebarOpen}
         isProfileMenuOpen={isProfileMenuOpen}
         isAccessibilityMenuOpen={isAccessibilityMenuOpen}
+        isNotificationsOpen={isNotificationsOpen}
         profileMenuRef={profileMenuRef}
         accessibilityMenuRef={accessibilityMenuRef}
+        notificationsMenuRef={notificationsMenuRef}
         accessibilitySettings={accessibilitySettings}
+        notifications={notifications}
         menuItems={menuItems}
         onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         onChangeView={setCurrentView}
@@ -703,10 +897,17 @@ function App() {
         onToggleProfileMenu={() => {
           setIsProfileMenuOpen((current) => !current)
           setIsAccessibilityMenuOpen(false)
+          setIsNotificationsOpen(false)
         }}
         onToggleAccessibilityMenu={() => {
           setIsAccessibilityMenuOpen((current) => !current)
           setIsProfileMenuOpen(false)
+          setIsNotificationsOpen(false)
+        }}
+        onToggleNotifications={() => {
+          setIsNotificationsOpen((current) => !current)
+          setIsProfileMenuOpen(false)
+          setIsAccessibilityMenuOpen(false)
         }}
         onToggleAccessibilitySetting={handleToggleAccessibilitySetting}
         onLogout={() => void handleLogout()}
@@ -819,7 +1020,9 @@ function App() {
             userRole={sessionUser.role}
             muralPosts={appData.muralPosts}
             importantDeadlines={appData.importantDeadlines}
-            onApply={(title) => void handleApply(title)}
+            careerProfile={careerProfile}
+            appliedPostIds={appliedPostIds}
+            onApply={(post) => void handleApply(post)}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
           />
         ) : null}

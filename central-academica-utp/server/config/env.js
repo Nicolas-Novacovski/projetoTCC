@@ -1,6 +1,12 @@
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-dotenv.config()
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const envPath = path.resolve(__dirname, '../../.env')
+
+dotenv.config({ path: envPath })
 
 function parseBoolean(value, defaultValue = false) {
   if (value == null || value === '') {
@@ -30,5 +36,13 @@ export const env = {
     password: readEnv(process.env.DB_PASSWORD),
     ssl: parseBoolean(process.env.DB_SSL, false),
     sslRejectUnauthorized: parseBoolean(process.env.DB_SSL_REJECT_UNAUTHORIZED, false),
+  },
+  mail: {
+    host: readEnv(process.env.SMTP_HOST),
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: parseBoolean(process.env.SMTP_SECURE, false),
+    user: readEnv(process.env.SMTP_USER),
+    password: readEnv(process.env.SMTP_PASSWORD),
+    from: readEnv(process.env.SMTP_FROM) || readEnv(process.env.SMTP_USER),
   },
 }

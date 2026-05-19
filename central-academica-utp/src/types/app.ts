@@ -15,7 +15,13 @@ export type DashboardStats = {
   reportsCount: number
 }
 
-export type Deadline = { title: string; detail: string }
+export type Deadline = {
+  title: string
+  detail: string
+  description: string
+  action: string
+  channel: string
+}
 
 export type ModerationPost = {
   id: number
@@ -65,7 +71,7 @@ export type LostItemForm = {
   foundBy: string
 }
 
-export type PublishForm = { category: string; title: string; location: string; description: string }
+export type PublishForm = { category: string; title: string; location: string; contactEmail: string; description: string }
 
 export type RideForm = {
   zone: string
@@ -84,6 +90,7 @@ export type CareerProfile = {
   course: string
   semester: string
   resumeFileName: string
+  contactEmail: string
   desiredArea: string
   salaryExpectation: string
   workModel: string
@@ -100,9 +107,12 @@ export type MuralPost = {
   status: PostStatus
   submittedAt: string
   author: string
+  contactEmail: string
   button: string | null
   meta: string[] | null
 }
+
+export type ApplicationStatus = 'available' | 'submitted'
 
 export type Report = { id: number; title: string; detail: string; status: string; createdAt: string }
 
@@ -140,6 +150,7 @@ export type AppData = {
   rideHotspots: RideHotspot[]
   lostItems: LostItem[]
   muralPosts: MuralPost[]
+  appliedPostIds: number[]
   moderationQueue: ModerationPost[]
   reports: Report[]
   rideRequestsInbox: RideRequest[]
@@ -156,9 +167,11 @@ export type AdminDatabaseSnapshot = {
     caronas: Array<Record<string, unknown>>
     solicitacoes_caronas: Array<Record<string, unknown>>
     pedidos_caronas: Array<Record<string, unknown>>
+    candidaturas_vagas: Array<Record<string, unknown>>
     achados_perdidos: Array<Record<string, unknown>>
     perfis_profissionais: Array<Record<string, unknown>>
     denuncias: Array<Record<string, unknown>>
+    logs_auditoria: Array<Record<string, unknown>>
   }
 }
 

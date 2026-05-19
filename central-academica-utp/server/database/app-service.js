@@ -1,9 +1,28 @@
 import { connectToDatabase } from './connection.js'
+import { sendApplicationEmail } from '../services/mail-service.js'
 
 const importantDeadlines = [
-  { title: 'Rematricula 2026/2', detail: 'Ate 05/07/2026' },
-  { title: 'Horas complementares', detail: 'Envio ate 18/06/2026' },
-  { title: 'Solicitacao de estagio', detail: 'Validacao em 3 dias uteis' },
+  {
+    title: 'Rematricula 2026/2',
+    detail: 'Ate 05/07/2026',
+    description: 'Periodo para confirmar sua continuidade no proximo semestre e evitar bloqueios academicos.',
+    action: 'Acesse o portal do aluno, revise pendencias financeiras e confirme a grade de disciplinas.',
+    channel: 'Portal do Aluno > Rematricula',
+  },
+  {
+    title: 'Horas complementares',
+    detail: 'Envio ate 18/06/2026',
+    description: 'Prazo para anexar certificados e atividades complementares que contam para a integralizacao do curso.',
+    action: 'Separe certificados em PDF, confira carga horaria e envie para analise da coordenacao.',
+    channel: 'Secretaria academica',
+  },
+  {
+    title: 'Solicitacao de estagio',
+    detail: 'Validacao em 3 dias uteis',
+    description: 'Fluxo de avaliacao de documentos de estagio, termo de compromisso e dados da empresa.',
+    action: 'Envie os documentos completos e acompanhe a devolutiva antes de iniciar as atividades.',
+    channel: 'Central de estagios',
+  },
 ]
 
 const secretaryEmail = 'secretaria@utp.br'
@@ -73,6 +92,7 @@ function mapPublication(row) {
     status: row.status_moderacao,
     submittedAt: formatTimestamp(row.data_submissao),
     author: row.autor,
+    contactEmail: row.email_contato || secretaryEmail,
     button: row.categoria === 'Vaga' ? 'Candidatar-se' : null,
     meta:
       row.categoria === 'Vaga'
@@ -171,6 +191,7 @@ function mapCareerProfile(row) {
       course: '',
       semester: '',
       resumeFileName: '',
+      contactEmail: '',
       desiredArea: '',
       salaryExpectation: '',
       workModel: 'Hibrido',
@@ -182,6 +203,7 @@ function mapCareerProfile(row) {
     course: row.curso,
     semester: row.semestre,
     resumeFileName: row.arquivo_curriculo,
+    contactEmail: row.email_contato || '',
     desiredArea: row.area_desejada,
     salaryExpectation: row.pretensao_salarial,
     workModel: row.modelo_trabalho,
@@ -206,6 +228,37 @@ function buildHotspots(rides) {
       detail: `${count} ${count === 1 ? 'carona ativa' : 'caronas ativas'}`,
     }
   })
+}
+
+async function ensureAuditLogTable(pool) {
+  await pool.query(`
+    create table if not exists logs_auditoria (
+      id_log serial primary key,
+      id_usuario integer references usuarios(id_usuario) on delete set null,
+      acao varchar(120) not null,
+      entidade varchar(80) not null,
+      id_entidade integer,
+      detalhe jsonb,
+      data_criacao timestamp without time zone not null default now()
+    )
+  `)
+}
+
+export async function recordAuditLog({ userId = null, action, entity, entityId = null, detail = {} }) {
+  const pool = await connectToDatabase()
+
+  try {
+    await ensureAuditLogTable(pool)
+    await pool.query(
+      `
+        insert into logs_auditoria (id_usuario, acao, entidade, id_entidade, detalhe, data_criacao)
+        values ($1, $2, $3, $4, $5::jsonb, now())
+      `,
+      [userId, action, entity, entityId, JSON.stringify(detail ?? {})],
+    )
+  } catch (error) {
+    console.error('Nao foi possivel registrar log de auditoria.', error)
+  }
 }
 
 async function getUserById(userId) {
@@ -325,7 +378,7 @@ export async function getAppData(userId, role) {
     throw new Error('Usuario nao encontrado.')
   }
 
-  const [ridesResult, lostItemsResult, publicationsResult, profileResult, rideRequestsResult, rideInterestsResult, reportsResult] =
+  const [ridesResult, lostItemsResult, publicationsResult, profileResult, rideRequestsResult, rideInterestsResult, applicationsResult, reportsResult] =
     await Promise.all([
       pool.query(
         `
@@ -341,8 +394,10 @@ export async function getAppData(userId, role) {
             where status_solicitacao = 'Pendente'
             group by id_carona
           ) requests on requests.id_carona = c.id_carona
+          where ($1 = 'admin' or c.status_carona = 'Ativa' or c.id_motorista = $2)
           order by c.id_carona desc
         `,
+        [role, userId],
       ),
       pool.query(
         `
@@ -377,6 +432,14 @@ export async function getAppData(userId, role) {
       ),
       getVisibleRideRequests(pool, userId),
       getVisibleRideInterests(pool, userId),
+      pool.query(
+        `
+          select distinct id_publicacao
+          from candidaturas_vagas
+          where id_usuario = $1
+        `,
+        [userId],
+      ),
       isAdmin
         ? pool.query(
             `
@@ -396,6 +459,7 @@ export async function getAppData(userId, role) {
   const careerProfile = mapCareerProfile(profileResult.rows[0] ?? null)
   const rideRequestsInbox = rideRequestsResult.rows.map(mapRideRequest)
   const rideInterestsInbox = rideInterestsResult.rows.map(mapRideInterest)
+  const appliedPostIds = applicationsResult.rows.map((row) => Number(row.id_publicacao)).filter(Boolean)
 
   return {
     user: {
@@ -414,6 +478,7 @@ export async function getAppData(userId, role) {
     rideHotspots: buildHotspots(rides),
     lostItems,
     muralPosts,
+    appliedPostIds,
     moderationQueue,
     reports,
     rideRequestsInbox,
@@ -423,26 +488,37 @@ export async function getAppData(userId, role) {
   }
 }
 
-export async function createPublication({ userId, category, title, location, description }) {
+export async function createPublication({ userId, role, category, title, location, contactEmail, description }) {
   const pool = await connectToDatabase()
+  const moderationStatus = role === 'admin' ? 'Aprovado' : 'Pendente'
 
-  await pool.query(
+  const result = await pool.query(
     `
       insert into publicacoes_mural (
         id_autor,
         categoria,
         titulo,
         local_empresa,
+        email_contato,
         descricao,
         status_moderacao,
         data_submissao
       )
-      values ($1, $2, $3, $4, $5, 'Pendente', now())
+      values ($1, $2, $3, $4, $5, $6, $7, now())
+      returning id_publicacao
     `,
-    [userId, category, title, location || 'Central Academica UTP', description],
+    [userId, category, title, location || 'Central Academica UTP', contactEmail || secretaryEmail, description, moderationStatus],
   )
 
-  return getAppData(userId, 'student')
+  await recordAuditLog({
+    userId,
+    action: 'PUBLICACAO_CRIADA',
+    entity: 'publicacoes_mural',
+    entityId: result.rows[0]?.id_publicacao,
+    detail: { category, title, status: moderationStatus },
+  })
+
+  return getAppData(userId, role === 'admin' ? 'admin' : 'student')
 }
 
 export async function createLostItem({
@@ -456,7 +532,7 @@ export async function createLostItem({
 }) {
   const pool = await connectToDatabase()
 
-  await pool.query(
+  const result = await pool.query(
     `
       insert into achados_perdidos (
         id_usuario_registro,
@@ -470,9 +546,18 @@ export async function createLostItem({
         contato_retirada
       )
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      returning id_item
     `,
     [userId, title, place, date, lostItemOpenStatus, category, description, foundBy, secretaryEmail],
   )
+
+  await recordAuditLog({
+    userId,
+    action: 'ITEM_ACHADO_REGISTRADO',
+    entity: 'achados_perdidos',
+    entityId: result.rows[0]?.id_item,
+    detail: { title, category, place, status: lostItemOpenStatus },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -495,7 +580,7 @@ export async function createRide({
     throw new Error('Selecione pelo menos um dia da semana para a carona.')
   }
 
-  await pool.query(
+  const result = await pool.query(
     `
       insert into caronas (
         id_motorista,
@@ -510,9 +595,18 @@ export async function createRide({
         status_carona
       )
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Ativa')
+      returning id_carona
     `,
     [userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
   )
+
+  await recordAuditLog({
+    userId,
+    action: 'CARONA_CRIADA',
+    entity: 'caronas',
+    entityId: result.rows[0]?.id_carona,
+    detail: { zone, title, departureTime, seats, weekdays: normalizedWeekdays },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -539,7 +633,7 @@ export async function createRideRequest({ zone, userId, whatsapp, pickupAddress,
     throw new Error('Voce pode manter no maximo 2 pedidos de carona ativos ao mesmo tempo.')
   }
 
-  await pool.query(
+  const result = await pool.query(
     `
       insert into pedidos_caronas (
         id_solicitante,
@@ -552,9 +646,18 @@ export async function createRideRequest({ zone, userId, whatsapp, pickupAddress,
         data_criacao
       )
       values ($1, $2, $3, $4, $5, null, 'Aberto', now())
+      returning id_pedido
     `,
     [userId, zone, whatsapp, pickupAddress, normalizedWeekdays],
   )
+
+  await recordAuditLog({
+    userId,
+    action: 'PEDIDO_CARONA_CRIADO',
+    entity: 'pedidos_caronas',
+    entityId: result.rows[0]?.id_pedido,
+    detail: { zone, status: 'Aberto', weekdays: normalizedWeekdays },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -578,7 +681,7 @@ export async function createRideInterest({ rideId, userId, whatsapp, pickupAddre
     throw new Error('Voce ja declarou interesse nessa carona.')
   }
 
-  await pool.query(
+  const result = await pool.query(
     `
       insert into solicitacoes_caronas (
         id_carona,
@@ -589,9 +692,18 @@ export async function createRideInterest({ rideId, userId, whatsapp, pickupAddre
         data_criacao
       )
       values ($1, $2, $3, $4, 'Pendente', now())
+      returning id_solicitacao
     `,
     [rideId, userId, whatsapp, pickupAddress],
   )
+
+  await recordAuditLog({
+    userId,
+    action: 'INTERESSE_CARONA_CRIADO',
+    entity: 'solicitacoes_caronas',
+    entityId: result.rows[0]?.id_solicitacao,
+    detail: { rideId, status: 'Pendente' },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -637,6 +749,14 @@ export async function updateRide({
     throw new Error('Nao foi possivel atualizar essa carona.')
   }
 
+  await recordAuditLog({
+    userId,
+    action: 'CARONA_ATUALIZADA',
+    entity: 'caronas',
+    entityId: rideId,
+    detail: { zone, title, departureTime, seats, weekdays: normalizedWeekdays },
+  })
+
   return getAppData(userId, 'student')
 }
 
@@ -655,6 +775,14 @@ export async function closeRide(rideId, userId) {
   if (!result.rowCount) {
     throw new Error('Nao foi possivel encerrar a vaga dessa carona.')
   }
+
+  await recordAuditLog({
+    userId,
+    action: 'CARONA_ENCERRADA',
+    entity: 'caronas',
+    entityId: rideId,
+    detail: { status: 'Lotada' },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -684,6 +812,14 @@ export async function updateRideRequest({ requestId, userId, zone, whatsapp, pic
   if (!result.rowCount) {
     throw new Error('Nao foi possivel atualizar esse pedido de carona.')
   }
+
+  await recordAuditLog({
+    userId,
+    action: 'PEDIDO_CARONA_ATUALIZADO',
+    entity: 'pedidos_caronas',
+    entityId: requestId,
+    detail: { zone, weekdays: normalizedWeekdays },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -737,9 +873,18 @@ export async function updateRideRequestStatus(requestId, userId, status) {
           id_usuario_aceitou = $3,
           motorista_aceitou_whatsapp = $4
       where id_pedido = $1
+      returning id_pedido
     `,
     [requestId, status, status === 'Aceito' ? userId : null, status === 'Aceito' ? acceptedDriverWhatsapp : null],
   )
+
+  await recordAuditLog({
+    userId,
+    action: 'STATUS_PEDIDO_CARONA_ATUALIZADO',
+    entity: 'pedidos_caronas',
+    entityId: requestId,
+    detail: { status, requesterId: request.id_solicitante },
+  })
 
   return getAppData(userId, 'student')
 }
@@ -760,6 +905,14 @@ export async function deleteRideRequest(requestId, userId) {
   if (!result.rowCount) {
     throw new Error('Nao foi possivel excluir esse pedido de carona.')
   }
+
+  await recordAuditLog({
+    userId,
+    action: 'PEDIDO_CARONA_EXCLUIDO',
+    entity: 'pedidos_caronas',
+    entityId: requestId,
+    detail: {},
+  })
 
   return getAppData(userId, 'student')
 }
@@ -784,20 +937,41 @@ export async function markLostItemRecovered(itemId, userId, role) {
     throw new Error('Item de achados e perdidos nao encontrado.')
   }
 
+  await recordAuditLog({
+    userId,
+    action: 'ITEM_ACHADO_RECUPERADO',
+    entity: 'achados_perdidos',
+    entityId: itemId,
+    detail: { status: lostItemRecoveredStatus },
+  })
+
   return getAppData(userId, role)
 }
 
 export async function updatePublicationStatus(publicationId, status, userId, role) {
   const pool = await connectToDatabase()
 
-  await pool.query(
+  const result = await pool.query(
     `
       update publicacoes_mural
       set status_moderacao = $2
       where id_publicacao = $1
+      returning id_publicacao
     `,
     [publicationId, status],
   )
+
+  if (!result.rowCount) {
+    throw new Error('Publicacao nao encontrada.')
+  }
+
+  await recordAuditLog({
+    userId,
+    action: 'PUBLICACAO_MODERADA',
+    entity: 'publicacoes_mural',
+    entityId: publicationId,
+    detail: { status },
+  })
 
   return getAppData(userId, role)
 }
@@ -822,10 +996,11 @@ export async function saveCareerProfile(userId, profile) {
         set curso = $2,
             semestre = $3,
             arquivo_curriculo = $4,
-            area_desejada = $5,
-            pretensao_salarial = $6,
-            modelo_trabalho = $7,
-            cidade_preferencia = $8
+            email_contato = $5,
+            area_desejada = $6,
+            pretensao_salarial = $7,
+            modelo_trabalho = $8,
+            cidade_preferencia = $9
         where id_perfil = $1
       `,
       [
@@ -833,41 +1008,160 @@ export async function saveCareerProfile(userId, profile) {
         profile.course,
         profile.semester,
         profile.resumeFileName,
+        profile.contactEmail,
         profile.desiredArea,
-        profile.salaryExpectation,
-        profile.workModel,
-        profile.preferredCity,
+        null,
+        'Nao informado',
+        null,
       ],
     )
+
+    await recordAuditLog({
+      userId,
+      action: 'PERFIL_PROFISSIONAL_ATUALIZADO',
+      entity: 'perfis_profissionais',
+      entityId: existing.rows[0].id_perfil,
+      detail: { course: profile.course, semester: profile.semester },
+    })
   } else {
-    await pool.query(
+    const result = await pool.query(
       `
         insert into perfis_profissionais (
           id_usuario,
           curso,
           semestre,
           arquivo_curriculo,
+          email_contato,
           area_desejada,
           pretensao_salarial,
           modelo_trabalho,
           cidade_preferencia
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        returning id_perfil
       `,
       [
         userId,
         profile.course,
         profile.semester,
         profile.resumeFileName,
+        profile.contactEmail,
         profile.desiredArea,
-        profile.salaryExpectation,
-        profile.workModel,
-        profile.preferredCity,
+        null,
+        'Nao informado',
+        null,
       ],
     )
+
+    await recordAuditLog({
+      userId,
+      action: 'PERFIL_PROFISSIONAL_CRIADO',
+      entity: 'perfis_profissionais',
+      entityId: result.rows[0]?.id_perfil,
+      detail: { course: profile.course, semester: profile.semester },
+    })
   }
 
   return getAppData(userId, 'student')
+}
+
+export async function createJobApplication({ userId, publicationId, studentName }) {
+  const pool = await connectToDatabase()
+
+  const [publicationResult, profileResult] = await Promise.all([
+    pool.query(
+      `
+        select
+          p.*,
+          coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as autor
+        from publicacoes_mural p
+        left join usuarios u on u.id_usuario = p.id_autor
+        where p.id_publicacao = $1
+          and p.categoria = 'Vaga'
+          and p.status_moderacao = 'Aprovado'
+        limit 1
+      `,
+      [publicationId],
+    ),
+    pool.query(
+      `
+        select *
+        from perfis_profissionais
+        where id_usuario = $1
+        order by id_perfil desc
+        limit 1
+      `,
+      [userId],
+    ),
+  ])
+
+  const post = publicationResult.rows[0] ? mapPublication(publicationResult.rows[0]) : null
+  const profile = mapCareerProfile(profileResult.rows[0] ?? null)
+
+  if (!post) {
+    throw new Error('Vaga nao encontrada ou indisponivel para declarar interesse.')
+  }
+
+  if (!profile.contactEmail) {
+    throw new Error('Informe um e-mail de contato no perfil profissional antes de declarar interesse.')
+  }
+
+  const contactEmail = post.contactEmail || secretaryEmail
+  const insertResult = await pool.query(
+    `
+      insert into candidaturas_vagas (
+        id_publicacao,
+        id_usuario,
+        email_aluno,
+        email_contato_vaga,
+        curriculo,
+        status_email,
+        data_criacao
+      )
+      values ($1, $2, $3, $4, $5, 'Pendente', now())
+      returning id_candidatura
+    `,
+    [publicationId, userId, profile.contactEmail, contactEmail, profile.resumeFileName || null],
+  )
+
+  const emailResult = await sendApplicationEmail({
+    to: profile.contactEmail,
+    studentName,
+    post,
+    profile,
+    contactEmail,
+  })
+
+  await pool.query(
+    `
+      update candidaturas_vagas
+      set status_email = $2
+      where id_candidatura = $1
+    `,
+    [insertResult.rows[0].id_candidatura, emailResult.sent ? 'Enviado' : 'Nao enviado'],
+  )
+
+  await recordAuditLog({
+    userId,
+    action: 'CANDIDATURA_VAGA_CRIADA',
+    entity: 'candidaturas_vagas',
+    entityId: insertResult.rows[0].id_candidatura,
+    detail: {
+      publicationId,
+      emailStatus: emailResult.sent ? 'Enviado' : 'Nao enviado',
+      contactEmail,
+    },
+  })
+
+  return {
+    id: insertResult.rows[0].id_candidatura,
+    emailSent: emailResult.sent,
+    emailMessage: emailResult.sent
+      ? `Enviamos as informacoes da vaga para ${profile.contactEmail}.`
+      : `Seu interesse foi registrado, mas o e-mail automatico nao foi enviado. Motivo: ${emailResult.reason || 'falha desconhecida no SMTP'}.`,
+    contactEmail,
+    post,
+  }
 }
 
 export async function getAdminDatabaseSnapshot(userId) {
@@ -884,9 +1178,11 @@ export async function getAdminDatabaseSnapshot(userId) {
     ridesResult,
     rideRequestsResult,
     publicRideRequestsResult,
+    applicationsResult,
     lostItemsResult,
     profilesResult,
     reportsResult,
+    auditLogsResult,
   ] = await Promise.all([
     pool.query(
       `
@@ -925,6 +1221,13 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
+        select id_candidatura, id_publicacao, id_usuario, email_aluno, email_contato_vaga, curriculo, status_email, data_criacao
+        from candidaturas_vagas
+        order by id_candidatura desc
+      `,
+    ),
+    pool.query(
+      `
         select id_item, id_usuario_registro, titulo, local_encontrado, data_hora, status_item, categoria
         from achados_perdidos
         order by id_item desc
@@ -932,7 +1235,7 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
-        select id_perfil, id_usuario, curso, semestre, arquivo_curriculo, area_desejada, modelo_trabalho, cidade_preferencia
+        select id_perfil, id_usuario, curso, semestre, arquivo_curriculo, email_contato, area_desejada, modelo_trabalho, cidade_preferencia
         from perfis_profissionais
         order by id_perfil desc
       `,
@@ -944,6 +1247,23 @@ export async function getAdminDatabaseSnapshot(userId) {
         order by id_denuncia desc
       `,
     ),
+    pool.query(
+      `
+        select
+          l.id_log,
+          l.id_usuario,
+          coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Sistema') as usuario,
+          l.acao,
+          l.entidade,
+          l.id_entidade,
+          l.detalhe,
+          l.data_criacao
+        from logs_auditoria l
+        left join usuarios u on u.id_usuario = l.id_usuario
+        order by l.data_criacao desc, l.id_log desc
+        limit 200
+      `,
+    ),
   ])
 
   return {
@@ -953,9 +1273,11 @@ export async function getAdminDatabaseSnapshot(userId) {
       caronas: ridesResult.rows.length,
       solicitacoes_caronas: rideRequestsResult.rows.length,
       pedidos_caronas: publicRideRequestsResult.rows.length,
+      candidaturas_vagas: applicationsResult.rows.length,
       achados_perdidos: lostItemsResult.rows.length,
       perfis_profissionais: profilesResult.rows.length,
       denuncias: reportsResult.rows.length,
+      logs_auditoria: auditLogsResult.rows.length,
     },
     tables: {
       usuarios: usersResult.rows,
@@ -963,9 +1285,11 @@ export async function getAdminDatabaseSnapshot(userId) {
       caronas: ridesResult.rows,
       solicitacoes_caronas: rideRequestsResult.rows,
       pedidos_caronas: publicRideRequestsResult.rows,
+      candidaturas_vagas: applicationsResult.rows,
       achados_perdidos: lostItemsResult.rows,
       perfis_profissionais: profilesResult.rows,
       denuncias: reportsResult.rows,
+      logs_auditoria: auditLogsResult.rows,
     },
   }
 }

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import {
   closeRide,
+  createJobApplication,
   createLostItem,
   createRideInterest,
   createRide,
@@ -12,6 +13,7 @@ import {
   loginAdmin,
   loginStudent,
   markLostItemRecovered,
+  recordAuditLog,
   saveCareerProfile,
   updateRide,
   updateRideRequest,
@@ -49,11 +51,25 @@ router.post('/auth/login', async (request, response) => {
       : await loginStudent(String(ra ?? ''), String(birthDate ?? ''))
 
   if (!user) {
+    await recordAuditLog({
+      action: 'LOGIN_FALHA',
+      entity: 'usuarios',
+      detail: { mode, identifier: mode === 'admin' ? login : String(ra ?? '') },
+    })
+
     return response.status(401).json({
       status: 'error',
       message: 'Credenciais invalidas.',
     })
   }
+
+  await recordAuditLog({
+    userId: user.id,
+    action: 'LOGIN_SUCESSO',
+    entity: 'usuarios',
+    entityId: user.id,
+    detail: { mode: user.role },
+  })
 
   const data = await getAppData(user.id, user.role)
 
@@ -90,6 +106,13 @@ router.get('/admin/database-snapshot', async (request, response) => {
   }
 
   const data = await getAdminDatabaseSnapshot(userId)
+  await recordAuditLog({
+    userId,
+    action: 'SNAPSHOT_BANCO_CONSULTADO',
+    entity: 'logs_auditoria',
+    detail: { area: 'admin/database-snapshot' },
+  })
+
   return response.json({
     status: 'ok',
     data,
@@ -97,7 +120,7 @@ router.get('/admin/database-snapshot', async (request, response) => {
 })
 
 router.post('/publications', async (request, response) => {
-  const { userId, category, title, location, description } = request.body
+  const { userId, role, category, title, location, contactEmail, description } = request.body
 
   if (!userId || !category || !title || !description) {
     return response.status(400).json({
@@ -108,15 +131,39 @@ router.post('/publications', async (request, response) => {
 
   const data = await createPublication({
     userId: Number(userId),
+    role,
     category,
     title,
     location,
+    contactEmail,
     description,
   })
 
   return response.status(201).json({
     status: 'ok',
     data,
+  })
+})
+
+router.post('/applications', async (request, response) => {
+  const { userId, publicationId, studentName } = request.body
+
+  if (!userId || !publicationId) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para registrar interesse na vaga.',
+    })
+  }
+
+  const application = await createJobApplication({
+    userId: Number(userId),
+    publicationId: Number(publicationId),
+    studentName: studentName || 'Estudante UTP',
+  })
+
+  return response.status(201).json({
+    status: 'ok',
+    application,
   })
 })
 

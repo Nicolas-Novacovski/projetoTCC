@@ -8,6 +8,7 @@ export const emptyCareerProfile: CareerProfile = {
   course: '',
   semester: '',
   resumeFileName: '',
+  contactEmail: '',
   desiredArea: '',
   salaryExpectation: '',
   workModel: 'Hibrido',

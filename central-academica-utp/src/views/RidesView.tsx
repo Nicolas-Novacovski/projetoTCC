@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import Swal from 'sweetalert2'
 import { WhatsAppIcon, InfoIcon, PencilIcon, TrashIcon } from '../components/icons'
@@ -44,24 +44,23 @@ export function RidesView({
   onDeleteRideRequest,
 }: RidesViewProps) {
   const weekdayOptions = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']
-  const safeRides = rides ?? []
-  const safeRideRequestsInbox = rideRequestsInbox ?? []
-  const safeRideInterestsInbox = rideInterestsInbox ?? []
-  const availableZones = [
-    ...new Set([...safeRides.map((ride) => ride.zone?.trim()), ...(rideHotspots ?? []).map((spot) => spot.id)].filter(Boolean)),
-  ] as string[]
-  const [selectedZone, setSelectedZone] = useState<string>(availableZones[0] ?? 'Centro')
+  const safeRides = rides
+  const safeRideRequestsInbox = rideRequestsInbox
+  const safeRideInterestsInbox = rideInterestsInbox
+  const availableZones = useMemo(
+    () => [
+      ...new Set([...safeRides.map((ride) => ride.zone?.trim()), ...(rideHotspots ?? []).map((spot) => spot.id)].filter(Boolean)),
+    ] as string[],
+    [rideHotspots, safeRides],
+  )
+  const [selectedZone, setSelectedZone] = useState<string>('Centro')
   const [rideSearch, setRideSearch] = useState('')
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false)
   const [requestForm, setRequestForm] = useState<RideRequestForm>({ whatsapp: '', pickupAddress: '' })
   const [selectedWeekdays, setSelectedWeekdays] = useState<string[]>([])
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (!selectedZone && availableZones[0]) {
-      setSelectedZone(availableZones[0])
-    }
-  }, [availableZones, selectedZone])
+  const activeSelectedZone = selectedZone || availableZones[0] || 'Centro'
 
   const normalizedSearch = rideSearch.trim().toLowerCase()
   const filteredRides = safeRides.filter((ride) => {
@@ -150,16 +149,16 @@ export function RidesView({
       }
 
       if (editingRequestId) {
-        await onUpdateRideRequest(editingRequestId, selectedZone, payload)
+        await onUpdateRideRequest(editingRequestId, activeSelectedZone, payload)
       } else {
-        await onCreateRideRequest(selectedZone, payload)
+        await onCreateRideRequest(activeSelectedZone, payload)
       }
 
       handleCloseRequestModal()
       await Swal.fire({
         icon: 'success',
         title: editingRequestId ? 'Pedido de carona atualizado' : 'Pedido de carona publicado',
-        html: `${editingRequestId ? 'Seu pedido foi atualizado' : 'Seu pedido ficou visivel para todos os usuarios'} na zona <strong>${selectedZone}</strong>.${selectedWeekdays.length ? `<br /><br />Dias selecionados: <strong>${selectedWeekdays.join(', ')}</strong>.` : ''}`,
+        html: `${editingRequestId ? 'Seu pedido foi atualizado' : 'Seu pedido ficou visivel para todos os usuarios'} na zona <strong>${activeSelectedZone}</strong>.${selectedWeekdays.length ? `<br /><br />Dias selecionados: <strong>${selectedWeekdays.join(', ')}</strong>.` : ''}`,
         confirmButtonText: 'Fechar',
       })
     } catch (error) {
@@ -522,12 +521,12 @@ export function RidesView({
         <div className="details-modal-backdrop" onClick={handleCloseRequestModal}>
           <div className="details-modal publish-modal" onClick={(event) => event.stopPropagation()}>
             <div className="details-modal-header">
-              <div><span className="detail-tag">Pedir carona</span><h3>Solicitar carona para a zona {selectedZone}</h3></div>
+              <div><span className="detail-tag">Pedir carona</span><h3>Solicitar carona para a zona {activeSelectedZone}</h3></div>
               <button className="ghost-button" type="button" onClick={handleCloseRequestModal}>Fechar</button>
             </div>
             <form className="publish-form" onSubmit={(event) => void handleSubmitRideRequest(event)}>
               <div className="lost-details-grid">
-                <div><span className="detail-label">Zona desejada</span><strong>{selectedZone}</strong></div>
+                <div><span className="detail-label">Zona desejada</span><strong>{activeSelectedZone}</strong></div>
               <div><span className="detail-label">Fluxo</span><strong>{editingRequestId ? 'Voce esta editando um pedido ja publicado.' : 'Seu pedido ficara visivel para todos os usuarios.'}</strong></div>
                 <div><span className="detail-label">Pedidos ativos</span><strong>{myActiveRideRequests.length}/2 em uso</strong></div>
               </div>

@@ -25,9 +25,12 @@ type AuthenticatedLayoutProps = {
   isSidebarOpen: boolean
   isProfileMenuOpen: boolean
   isAccessibilityMenuOpen: boolean
+  isNotificationsOpen: boolean
   profileMenuRef: RefObject<HTMLDivElement | null>
   accessibilityMenuRef: RefObject<HTMLDivElement | null>
+  notificationsMenuRef: RefObject<HTMLDivElement | null>
   accessibilitySettings: AccessibilitySettings
+  notifications: Array<{ id: string; title: string; detail: string; tone: 'info' | 'warning' | 'success' }>
   menuItems: MenuItem[]
   children: ReactNode
   onToggleSidebar: () => void
@@ -35,6 +38,7 @@ type AuthenticatedLayoutProps = {
   onRefresh: () => void
   onToggleProfileMenu: () => void
   onToggleAccessibilityMenu: () => void
+  onToggleNotifications: () => void
   onToggleAccessibilitySetting: (setting: keyof AccessibilitySettings) => void
   onLogout: () => void
 }
@@ -45,9 +49,12 @@ export function AuthenticatedLayout({
   isSidebarOpen,
   isProfileMenuOpen,
   isAccessibilityMenuOpen,
+  isNotificationsOpen,
   profileMenuRef,
   accessibilityMenuRef,
+  notificationsMenuRef,
   accessibilitySettings,
+  notifications,
   menuItems,
   children,
   onToggleSidebar,
@@ -55,6 +62,7 @@ export function AuthenticatedLayout({
   onRefresh,
   onToggleProfileMenu,
   onToggleAccessibilityMenu,
+  onToggleNotifications,
   onToggleAccessibilitySetting,
   onLogout,
 }: AuthenticatedLayoutProps) {
@@ -125,7 +133,7 @@ export function AuthenticatedLayout({
                     aria-pressed={accessibilitySettings.largeFont}
                     onClick={() => onToggleAccessibilitySetting('largeFont')}
                   >
-                    <span>Fonte maior</span>
+                    <span>Texto maior</span>
                     <strong>{accessibilitySettings.largeFont ? 'Ativo' : 'Inativo'}</strong>
                   </button>
                   <button
@@ -149,10 +157,42 @@ export function AuthenticatedLayout({
                 </div>
               ) : null}
             </div>
-            <button className="icon-button notification-button" type="button" aria-label="Notificacoes" onClick={onRefresh}>
-              <BellIcon />
-              <span className="notification-dot" aria-hidden="true" />
-            </button>
+            <div className="notifications-menu" ref={notificationsMenuRef}>
+              <button
+                className="icon-button notification-button"
+                type="button"
+                aria-label="Abrir notificacoes"
+                aria-expanded={isNotificationsOpen}
+                onClick={onToggleNotifications}
+              >
+                <BellIcon />
+                {notifications.length > 0 ? <span className="notification-dot" aria-hidden="true" /> : null}
+              </button>
+              {isNotificationsOpen ? (
+                <div className="notifications-dropdown">
+                  <div className="notifications-dropdown-header">
+                    <div>
+                      <strong>Notificacoes</strong>
+                      <span>{notifications.length} atualizacao(es)</span>
+                    </div>
+                    <button type="button" onClick={onRefresh}>Atualizar</button>
+                  </div>
+                  <div className="notifications-list">
+                    {notifications.length > 0 ? notifications.map((notification) => (
+                      <article key={notification.id} className={`notification-item notification-${notification.tone}`}>
+                        <strong>{notification.title}</strong>
+                        <p>{notification.detail}</p>
+                      </article>
+                    )) : (
+                      <article className="notification-item notification-info">
+                        <strong>Tudo em dia</strong>
+                        <p>Nenhuma pendencia importante encontrada agora.</p>
+                      </article>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </div>
             <div className="profile-menu" ref={profileMenuRef}>
               <button
                 className="profile-button"

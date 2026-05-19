@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { AdminDatabaseSnapshot } from '../types/app'
 
 type DatabaseViewProps = {
@@ -8,12 +8,15 @@ type DatabaseViewProps = {
 }
 
 export function DatabaseView({ snapshot, isLoading, onLoad }: DatabaseViewProps) {
-  const tableEntries = snapshot ? Object.entries(snapshot.tables) : []
   const [selectedTable, setSelectedTable] = useState<string | null>(null)
+  const tableEntries = useMemo(() => (snapshot ? Object.entries(snapshot.tables) : []), [snapshot])
   const activeTableName = selectedTable && snapshot?.tables[selectedTable as keyof AdminDatabaseSnapshot['tables']]
     ? selectedTable
     : tableEntries[0]?.[0] ?? null
-  const activeRows = activeTableName ? snapshot?.tables[activeTableName as keyof AdminDatabaseSnapshot['tables']] ?? [] : []
+  const activeRows = useMemo(
+    () => (activeTableName ? snapshot?.tables[activeTableName as keyof AdminDatabaseSnapshot['tables']] ?? [] : []),
+    [activeTableName, snapshot],
+  )
   const activeColumns = useMemo(() => {
     const columnNames = new Set<string>()
 
@@ -23,17 +26,6 @@ export function DatabaseView({ snapshot, isLoading, onLoad }: DatabaseViewProps)
 
     return [...columnNames].slice(0, 6)
   }, [activeRows])
-
-  useEffect(() => {
-    if (!snapshot) {
-      setSelectedTable(null)
-      return
-    }
-
-    if (!activeTableName && tableEntries[0]) {
-      setSelectedTable(tableEntries[0][0])
-    }
-  }, [snapshot, activeTableName, tableEntries])
 
   function formatTableName(tableName: string) {
     return tableName.replaceAll('_', ' ')

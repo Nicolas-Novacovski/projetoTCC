@@ -262,8 +262,33 @@
   background: var(--page-bg);
 }
 
+:where(.app-shell, .login-page) :where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #1f7fa8;
+  outline-offset: 3px;
+}
+
 .accessibility-large-font {
-  font-size: 118%;
+  font-size: 112%;
+}
+
+.accessibility-large-font :where(.main-content, .topbar, .sidebar, .details-modal, .profile-dropdown, .accessibility-dropdown, .notifications-dropdown) {
+  font-size: 1.06em;
+}
+
+.accessibility-large-font :where(button, input, textarea, select, .sidebar-link, .profile-button) {
+  min-height: 50px;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.accessibility-large-font :where(.page-heading h2, .career-progress-panel h3, .career-card-header h3, .home-card h3, .ride-card h3, .lost-details-card h3, .moderation-card h3, .mural-card h3, .application-review h2) {
+  font-size: clamp(1.35rem, 1.6vw, 1.75rem);
+  line-height: 1.25;
+}
+
+.accessibility-large-font :where(.page-heading p, .career-card-header p, .career-progress-panel p, .home-card p, .ride-card p, .lost-details-card p, .moderation-card p, .mural-card p, .notification-item p, .application-review p, .form-field span, .detail-label, .ride-meta-label, .card-description, .application-action-row span) {
+  font-size: 1rem;
+  line-height: 1.75;
 }
 
 .accessibility-word-spacing :where(h1, h2, h3, h4, p, span, strong, small, button, input, textarea, select, label, li, a) {
@@ -275,7 +300,7 @@
   color: #ffff00;
 }
 
-.accessibility-high-contrast :where(.main-content, .topbar, .login-page, .login-panel, .login-hero, .login-card, .home-card, .career-card, .resume-upload-card, .rides-action-hero, .rides-summary-card, .rides-search-panel, .ride-card, .lost-card, .lost-details-card, .rides-list-panel, .ride-request-card, .my-ride-request-card, .moderation-card, .overview-card, .database-card, .database-focus-card, .database-empty-card, .details-modal, .profile-dropdown, .accessibility-dropdown, .lost-return-notice, .rides-disclaimer, .rides-request-limit-warning, .ride-meta-grid div, .ride-request-meta div, .lost-details-grid div, .lost-details-footer, .database-table-row, .moderation-row, .report-item, .weekday-fieldset, .weekday-option, .lost-found-search) {
+.accessibility-high-contrast :where(.main-content, .topbar, .login-page, .login-panel, .login-hero, .login-card, .home-card, .career-card, .career-form-card, .career-hero-panel, .career-progress-panel, .career-summary-strip, .career-summary-strip div, .career-requirements span, .resume-upload-card, .rides-action-hero, .rides-summary-card, .rides-search-panel, .ride-card, .lost-card, .lost-details-card, .rides-list-panel, .ride-request-card, .my-ride-request-card, .moderation-card, .overview-card, .database-card, .database-focus-card, .database-empty-card, .details-modal, .profile-dropdown, .accessibility-dropdown, .notifications-dropdown, .notification-item, .lost-return-notice, .rides-disclaimer, .rides-request-limit-warning, .ride-meta-grid div, .ride-request-meta div, .lost-details-grid div, .lost-details-footer, .database-table-row, .moderation-row, .report-item, .weekday-fieldset, .weekday-option, .lost-found-search, .mural-section, .mural-card, .mural-card-tags span, .application-sent-card, .application-profile-card, .application-profile-summary div, .application-review-grid div, .application-review-note, .deadline-modal, .deadline-detail-grid div) {
   border-color: #ffff00;
   background: #000000;
   color: #ffff00;
@@ -327,6 +352,27 @@
 
 .accessibility-high-contrast :where(input::placeholder, textarea::placeholder) {
   color: #ffff99;
+}
+
+.accessibility-high-contrast :where(button, a, input, select, textarea):focus-visible {
+  outline-color: #00ffff;
+  box-shadow: 0 0 0 5px rgba(0, 255, 255, 0.28);
+}
+
+.accessibility-high-contrast :where(.career-progress-track) {
+  border: 1px solid #ffff00;
+  background: #000000;
+}
+
+.accessibility-high-contrast :where(.career-progress-track span, .notification-warning, .notification-success, .notification-info, .career-requirements span.is-complete) {
+  border: 1px solid #ffff00;
+  background: #ffff00;
+  color: #000000;
+}
+
+.accessibility-high-contrast :where(.primary-button:hover, .secondary-button:hover, .ghost-button:hover, .profile-dropdown-action:hover, .notifications-dropdown-header button:hover) {
+  background: #ffff00;
+  color: #000000;
 }
 
 .sidebar {
@@ -502,11 +548,9 @@
   height: 42px;
 }
 
-.profile-menu {
-  position: relative;
-}
-
-.accessibility-menu {
+.profile-menu,
+.accessibility-menu,
+.notifications-menu {
   position: relative;
 }
 
@@ -761,17 +805,219 @@
   line-height: 1.6;
 }
 
-.career-layout {
+.career-layout,
+.career-profile-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 22px;
 }
 
-.career-card {
+.notifications-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(360px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid #dce7ee;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 40px rgba(15, 48, 68, 0.16);
+  z-index: 26;
+}
+
+.notifications-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebf1f5;
+}
+
+.notifications-dropdown-header strong {
+  display: block;
+  color: #163a54;
+  font-size: 15px;
+}
+
+.notifications-dropdown-header span {
+  display: block;
+  margin-top: 3px;
+  color: #6a8597;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.notifications-dropdown-header button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: #edf7fc;
+  color: #0f4b71;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.notifications-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.notification-item {
+  padding: 12px;
+  border: 1px solid #dce7ee;
+  border-left-width: 4px;
+  border-radius: 14px;
+  background: #f8fbfd;
+}
+
+.notification-item strong {
+  color: #163a54;
+  font-size: 14px;
+}
+
+.notification-item p {
+  margin: 4px 0 0;
+  color: #678193;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.notification-warning {
+  border-left-color: #f4a340;
+}
+
+.notification-success {
+  border-left-color: #34a853;
+}
+
+.notification-info {
+  border-left-color: #2b8ab3;
+}
+
+.career-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.career-progress-panel,
+.career-summary-strip {
   padding: 22px;
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 10px 28px rgba(16, 59, 82, 0.08);
+}
+
+.career-hero-panel {
+  background: linear-gradient(180deg, #ffffff 0%, #f4fbfe 100%);
+  border: 1px solid #d9ebf4;
+}
+
+.career-progress-panel h3 {
+  margin: 8px 0 6px;
+  color: #163a54;
+  font-size: 26px;
+}
+
+.career-progress-panel p {
+  max-width: 680px;
+  margin: 0;
+  color: #678193;
+  line-height: 1.55;
+}
+
+.career-progress-track {
+  height: 12px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: #e7f0f6;
+  overflow: hidden;
+}
+
+.career-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2b8ab3, #34a853);
+}
+
+.career-progress-caption {
+  display: block;
+  margin-top: 8px;
+  color: #678193;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.career-requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.career-requirements span {
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: #eef4f7;
+  color: #678193;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.career-requirements span.is-complete {
+  background: #e5f7ef;
+  color: #15724a;
+}
+
+.career-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.career-summary-strip div {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f7fafc;
+}
+
+.career-summary-strip strong {
+  display: block;
+  margin-top: 5px;
+  color: #163a54;
+  overflow-wrap: anywhere;
+}
+
+.career-card {
+  padding: 24px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 28px rgba(16, 59, 82, 0.08);
+}
+
+.career-form-card {
+  border: 1px solid #dce9f1;
+  box-shadow: 0 8px 22px rgba(16, 59, 82, 0.07);
+}
+
+.career-profile-grid {
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  align-items: start;
+}
+
+.career-main-form .publish-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.career-resume-card {
+  position: sticky;
+  top: 22px;
 }
 
 .career-card-header {
@@ -803,6 +1049,13 @@
 .resume-upload-card strong {
   color: #163a54;
   font-size: 18px;
+}
+
+.resume-upload-hint {
+  margin: 0;
+  color: #678193;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .ghost-upload-button {
@@ -1499,17 +1752,91 @@
   font-weight: 500;
 }
 
-.content-grid {
+.content-grid,
+.mural-content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
   gap: 28px;
   align-items: start;
 }
 
+.mural-section {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.mural-content-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 22px;
+}
+
 .mural-list {
   display: flex;
   flex-direction: column;
   gap: 22px;
+  min-width: 0;
+}
+
+.mural-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.mural-filter-bar .filter-chip {
+  border: 0;
+  cursor: pointer;
+}
+
+.mural-post-group {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.mural-post-group + .mural-post-group {
+  margin-top: 8px;
+  padding-top: 24px;
+  border-top: 1px solid #dce9f1;
+}
+
+.mural-group-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.mural-group-heading h3 {
+  margin: 0 0 4px;
+  color: #163a54;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.mural-group-heading p {
+  margin: 0;
+  color: #60798d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.mural-group-heading > span {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eef4f7;
+  color: #31586b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.mural-interested-group {
+  padding: 20px;
+  border: 1px solid #d9ebf4;
+  border-radius: 18px;
+  background: #f8fbfd;
 }
 
 .feature-card,
@@ -1524,6 +1851,16 @@
   color: rgba(246, 250, 252, 0.98);
 }
 
+.mural-card {
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid #dce9f1;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #163a54;
+  box-shadow: 0 8px 22px rgba(16, 59, 82, 0.08);
+}
+
 .card-header {
   display: flex;
   align-items: flex-start;
@@ -1536,6 +1873,16 @@
   display: flex;
   align-items: flex-start;
   gap: 14px;
+  min-width: 0;
+}
+
+.mural-card-title-copy {
+  min-width: 0;
+}
+
+.mural-card-title-copy h3,
+.mural-card-title-copy p {
+  overflow-wrap: anywhere;
 }
 
 .card-icon {
@@ -1565,6 +1912,13 @@
   color: #ffffff;
 }
 
+.mural-card h3 {
+  margin: 0;
+  color: #163a54;
+  font-size: 21px;
+  line-height: 1.2;
+}
+
 .feature-card h3 {
   font-size: 22px;
   line-height: 1.12;
@@ -1573,7 +1927,7 @@
 
 .card-subtitle {
   margin-top: 3px;
-  color: #4ba9db;
+  color: #4a7792;
   font-size: 16px;
 }
 
@@ -1587,26 +1941,306 @@
   font-weight: 700;
 }
 
+.mural-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 260px;
+  min-width: 0;
+}
+
+.match-tag {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #e5f7ef;
+  color: #15724a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .card-description {
-  max-width: 760px;
+  max-width: 100%;
   margin: 0 0 16px;
-  color: rgba(198, 210, 220, 0.48);
+  color: #5d7586;
   font-size: 15px;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .card-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 18px;
-  color: rgba(202, 213, 221, 0.64);
+  color: #6b8292;
   font-size: 15px;
+  min-width: 0;
 }
 
 .card-meta span {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.application-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.application-action-row span {
+  color: #5d7586;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.application-sent-card {
+  border: 1px solid rgba(115, 220, 166, 0.34);
+  box-shadow: 0 12px 34px rgba(15, 82, 69, 0.22);
+}
+
+.application-profile-card {
+  margin-bottom: 18px;
+}
+
+.application-profile-summary {
+  display: grid;
+  gap: 12px;
+  padding: 0 22px 22px;
+}
+
+.application-profile-summary div {
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.application-profile-summary span {
+  display: block;
+  margin-bottom: 5px;
+  color: rgba(220, 235, 244, 0.7);
+  font-size: 13px;
+}
+
+.application-profile-summary strong {
+  color: #ffffff;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.application-popup {
+  width: min(760px, calc(100vw - 32px));
+  border-radius: 18px;
+}
+
+.application-popup .swal2-actions {
+  width: 100%;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0 38px 0;
+}
+
+.application-review {
+  text-align: left;
+}
+
+.application-review h2 {
+  margin: 10px 0 4px;
+  color: #163a54;
+  font-size: 24px;
+}
+
+.application-review p {
+  margin: 0;
+  color: #678193;
+}
+
+.application-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.application-review-grid div {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f7fafc;
+}
+
+.application-review-grid span {
+  display: block;
+  margin-bottom: 5px;
+  color: #678193;
+  font-size: 13px;
+}
+
+.application-review-grid strong {
+  color: #163a54;
+}
+
+.application-review-note {
+  margin-top: 16px !important;
+  font-size: 14px;
+}
+
+.application-loading-popup {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.application-loading-state {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 10px 0 4px;
+  text-align: center;
+}
+
+.application-loading-spinner {
+  width: 54px;
+  height: 54px;
+  border: 5px solid #d9edf6;
+  border-top-color: #2b8ab3;
+  border-radius: 999px;
+  animation: application-spin 0.85s linear infinite;
+}
+
+.application-loading-state p {
+  margin: 0;
+  color: #678193;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.application-result {
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+
+.application-result > p {
+  margin: 0;
+  color: #31586b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.application-disclaimer,
+.application-contact-box {
+  padding: 16px;
+  border-radius: 14px;
+  background: #f7fafc;
+}
+
+.application-disclaimer {
+  border: 1px solid #f0d9a4;
+  background: #fff8e8;
+}
+
+.application-disclaimer strong,
+.application-contact-box span {
+  display: block;
+  margin-bottom: 6px;
+  color: #163a54;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.application-disclaimer p {
+  margin: 0;
+  color: #6f5108;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.application-contact-box strong {
+  color: #163a54;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+@keyframes application-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.application-popup-confirm,
+.application-popup-cancel {
+  min-width: 180px;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.application-popup-confirm {
+  background: #2b8ab3;
+  color: #ffffff;
+}
+
+.application-popup-cancel {
+  order: 1;
+  background: #eef4f7;
+  color: #31586b;
+}
+
+.application-popup-confirm {
+  order: 2;
+}
+
+.deadline-modal {
+  width: min(720px, 100%);
+}
+
+.deadline-modal .details-modal-header h3 {
+  margin: 8px 0 4px;
+  color: #163a54;
+  font-size: 24px;
+}
+
+.deadline-modal .details-modal-header p {
+  margin: 0;
+  color: #2b8ab3;
+  font-weight: 700;
+}
+
+.deadline-detail-grid {
+  display: grid;
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.deadline-detail-grid div {
+  padding: 16px;
+  border: 1px solid #dce9f1;
+  border-radius: 14px;
+  background: #f7fafc;
+}
+
+.deadline-detail-grid strong {
+  display: block;
+  margin-top: 6px;
+  color: #163a54;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.deadline-modal-footer {
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #dce9f1;
 }
 
 .card-meta svg {
@@ -1646,10 +2280,13 @@
 }
 .side-panel {
   display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .study-card {
   width: 100%;
+  min-width: 0;
   padding: 26px 24px;
   color: #ffffff;
 }
@@ -2670,6 +3307,8 @@
   }
 
   .career-layout,
+  .career-profile-grid,
+  .career-overview,
   .home-grid,
   .rides-action-hero,
   .rides-hero,
@@ -2689,12 +3328,14 @@
     min-height: auto;
   }
 
-  .content-grid {
+  .content-grid,
+  .mural-content-grid {
     grid-template-columns: 1fr;
   }
 
   .side-panel {
-    max-width: 500px;
+    width: 100%;
+    max-width: none;
   }
 }
 
@@ -2785,6 +3426,50 @@
 
   .database-table-head {
     display: none;
+  }
+
+  .mural-card {
+    padding: 18px;
+  }
+
+  .mural-card .card-header,
+  .mural-card .card-title-row,
+  .application-action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mural-card-tags {
+    justify-content: flex-start;
+    max-width: none;
+  }
+
+  .application-action-row .primary-button {
+    width: 100%;
+  }
+
+  .application-popup .swal2-actions {
+    padding: 0 22px;
+  }
+
+  .application-popup-confirm,
+  .application-popup-cancel {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .career-summary-strip,
+  .career-main-form .publish-grid,
+  .application-review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .career-resume-card {
+    position: static;
+  }
+
+  .mural-card-tags {
+    justify-content: flex-start;
   }
 
   .database-table-row {
@@ -2884,4 +3569,724 @@
   .study-item {
     padding-bottom: 16px;
   }
+}
+
+/* Accessibility overrides stay at the end so they win over view-specific card styles. */
+.accessibility-large-font :where(.page-heading h2, .career-progress-panel h3, .career-card-header h3, .home-card h3, .ride-card h3, .lost-details-card h3, .moderation-card h3, .mural-card h3, .application-review h2) {
+  font-size: clamp(1.35rem, 1.8vw, 1.8rem) !important;
+  line-height: 1.28 !important;
+}
+
+.accessibility-large-font :where(.page-heading p, .career-card-header p, .career-progress-panel p, .home-card p, .ride-card p, .lost-details-card p, .moderation-card p, .mural-card p, .notification-item p, .application-review p, .form-field span, .detail-label, .ride-meta-label, .card-description, .application-action-row span) {
+  font-size: 1rem !important;
+  line-height: 1.75 !important;
+}
+
+.accessibility-large-font :where(button, input, textarea, select, .sidebar-link, .profile-button, .accessibility-option, .profile-dropdown-action) {
+  min-height: 50px !important;
+  font-size: 1rem !important;
+  line-height: 1.45 !important;
+}
+
+.accessibility-high-contrast :where(.main-content, .topbar, .login-page, .login-panel, .login-hero, .login-card, .home-card, .career-card, .career-form-card, .career-hero-panel, .career-progress-panel, .career-summary-strip, .career-summary-strip div, .career-requirements span, .resume-upload-card, .rides-action-hero, .rides-summary-card, .rides-search-panel, .ride-card, .lost-card, .lost-details-card, .rides-list-panel, .ride-request-card, .my-ride-request-card, .moderation-card, .overview-card, .database-card, .database-focus-card, .database-empty-card, .details-modal, .profile-dropdown, .accessibility-dropdown, .notifications-dropdown, .notification-item, .lost-return-notice, .rides-disclaimer, .rides-request-limit-warning, .ride-meta-grid div, .ride-request-meta div, .lost-details-grid div, .lost-details-footer, .database-table-row, .moderation-row, .report-item, .weekday-fieldset, .weekday-option, .lost-found-search, .mural-section, .mural-card, .mural-card-tags span, .application-sent-card, .application-profile-card, .application-profile-summary div, .application-review-grid div, .application-review-note, .deadline-modal, .deadline-detail-grid div) {
+  border-color: #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+.accessibility-high-contrast :where(.career-progress-track) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.career-progress-track span, .notification-warning, .notification-success, .notification-info, .career-requirements span.is-complete) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.primary-button:hover, .secondary-button:hover, .ghost-button:hover, .profile-dropdown-action:hover, .notifications-dropdown-header button:hover, .sidebar-link:hover, .sidebar-link.is-active, .accessibility-option.is-active) {
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.page-heading h2, .page-heading p, .lost-card h3, .lost-card-body p, .lost-card-meta, .lost-card-meta span, .lost-card-action, .lost-return-notice strong, .lost-return-notice span, .lost-found-search input, .lost-found-search span, .lost-details-header h3, .lost-details-header p, .details-modal-description, .card-subtitle, .card-description, .card-meta, .card-meta span, .detail-label, .lost-details-grid strong, .lost-details-footer strong, .notifications-dropdown-header strong, .notifications-dropdown-header span) {
+  color: #ffff00 !important;
+}
+
+.accessibility-high-contrast :where(.lost-found-search input::placeholder) {
+  color: #ffff99 !important;
+}
+
+.accessibility-high-contrast :where(.lost-card-icon) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.lost-card-icon svg) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.primary-button:hover, .secondary-button:hover, .ghost-button:hover, .profile-dropdown-action:hover, .notifications-dropdown-header button:hover, .sidebar-link:hover, .sidebar-link.is-active, .accessibility-option.is-active, .career-progress-track span, .notification-warning, .notification-success, .notification-info, .career-requirements span.is-complete) :where(h1, h2, h3, h4, p, span, strong, small, label, li, a, svg) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.icon-button, .notification-button, .accessibility-toggle, .profile-button, .secondary-button, .primary-button, .ghost-button, .session-button, .profile-dropdown-action, .notifications-dropdown-header button, .application-popup-confirm, .application-popup-cancel) {
+  border-color: #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+.accessibility-high-contrast :where(.icon-button, .notification-button, .accessibility-toggle, .profile-button, .secondary-button, .primary-button, .ghost-button, .session-button, .profile-dropdown-action, .notifications-dropdown-header button, .application-popup-confirm, .application-popup-cancel) :where(span, strong, small, svg) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.profile-avatar) {
+  border: 1px solid #000000 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+.accessibility-high-contrast :where(.profile-avatar svg) {
+  color: #ffff00 !important;
+  stroke: #ffff00 !important;
+}
+
+.accessibility-high-contrast :where(input::placeholder, textarea::placeholder, .lost-found-search input::placeholder) {
+  color: #ffff00 !important;
+  opacity: 1 !important;
+}
+
+.accessibility-high-contrast input::placeholder,
+.accessibility-high-contrast textarea::placeholder,
+.accessibility-high-contrast .lost-found-search input::placeholder,
+.accessibility-high-contrast .form-field input::placeholder,
+.accessibility-high-contrast .form-field textarea::placeholder {
+  color: #ffff00 !important;
+  opacity: 1 !important;
+}
+
+.accessibility-high-contrast input,
+.accessibility-high-contrast textarea,
+.accessibility-high-contrast .lost-found-search input {
+  color: #ffff00 !important;
+  caret-color: #ffff00 !important;
+}
+
+.accessibility-high-contrast :where(.home-grid, .career-layout, .career-profile-grid, .career-overview, .lost-found-layout, .content-grid, .mural-content-grid, .moderation-overview, .database-overview, .database-grid, .rides-hero, .rides-content) {
+  position: relative;
+  padding: 18px !important;
+  border: 1px solid #ffff00 !important;
+  border-radius: 18px !important;
+  background: #000000 !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 0, 0.55) !important;
+}
+
+.accessibility-high-contrast :where(.lost-found-grid, .side-panel, .mural-section, .career-main-form, .career-resume-card, .rides-list-panel, .rides-search-panel, .database-table, .database-dynamic-table, .moderation-card) {
+  padding: 16px !important;
+  border: 1px dashed #ffff00 !important;
+  border-radius: 16px !important;
+  background: #000000 !important;
+}
+
+.accessibility-high-contrast :where(.lost-card, .lost-details-card, .home-card, .career-card, .mural-card, .ride-card, .database-card, .database-focus-card, .overview-card) {
+  border-width: 2px !important;
+}
+
+.accessibility-high-contrast :where(.lost-details-card, .side-panel, .career-resume-card) {
+  min-height: 100%;
+}
+
+.accessibility-high-contrast :where(.lost-found-layout, .content-grid, .mural-content-grid, .career-layout, .career-profile-grid, .career-overview, .database-grid, .rides-content) {
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.accessibility-high-contrast :where(.lost-found-grid, .lost-details-card, .mural-section, .side-panel, .career-main-form, .career-resume-card, .database-focus-card, .database-card, .rides-list-panel, .rides-search-panel) {
+  padding: 18px !important;
+  border: 1px solid #ffff00 !important;
+  border-radius: 18px !important;
+  background: #000000 !important;
+  box-shadow: none !important;
+}
+
+.accessibility-high-contrast :where(.lost-found-grid, .mural-section, .side-panel, .career-main-form, .career-resume-card) {
+  outline: 1px dashed rgba(255, 255, 0, 0.75);
+  outline-offset: -8px;
+}
+
+body.accessibility-high-contrast :where(.swal2-container) {
+  background: rgba(0, 0, 0, 0.82) !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-popup, .application-popup, .whatsapp-popup) {
+  border: 2px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-title, .swal2-html-container, .swal2-content, .swal2-validation-message, .application-review, .application-review h2, .application-review p, .application-review-note, .whatsapp-modal-heading, .whatsapp-modal-detail, .whatsapp-modal-warning, .whatsapp-modal-hero strong, .whatsapp-modal-hero span) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-html-container strong, .swal2-html-container span, .swal2-html-container p, .swal2-html-container label, .application-review-grid span, .application-review-grid strong, .whatsapp-modal-badge) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-input, .swal2-textarea, .swal2-select, .swal-inline-form input, .swal-inline-form textarea) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  caret-color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast .swal2-input::placeholder,
+body.accessibility-high-contrast .swal2-textarea::placeholder,
+body.accessibility-high-contrast .swal-inline-form input::placeholder,
+body.accessibility-high-contrast .swal-inline-form textarea::placeholder {
+  color: #ffff00 !important;
+  opacity: 1 !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-confirm, .swal2-cancel, .application-popup-confirm, .application-popup-cancel, .whatsapp-popup-confirm) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-deny, .swal2-close) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.application-review-grid div, .whatsapp-modal-card, .whatsapp-modal-hero, .whatsapp-modal-detail, .whatsapp-modal-warning) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.whatsapp-modal-hero-icon) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.whatsapp-modal-hero-icon svg) {
+  color: #000000 !important;
+  fill: #000000 !important;
+  stroke: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-icon.swal2-success, .swal2-icon.swal2-info, .swal2-icon.swal2-warning, .swal2-icon.swal2-error, .swal2-icon.swal2-question) {
+  border-color: #ffff00 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.swal2-success-line-tip, .swal2-success-line-long, .swal2-x-mark-line-left, .swal2-x-mark-line-right) {
+  background-color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal-backdrop) {
+  padding: 24px !important;
+  background: rgba(0, 0, 0, 0.88) !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal, .publish-modal, .deadline-modal) {
+  width: min(820px, calc(100vw - 48px)) !important;
+  max-height: calc(100vh - 48px) !important;
+  padding: 24px !important;
+  border: 2px solid #ffff00 !important;
+  border-radius: 18px !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: 0 0 0 1px #000000, 0 0 0 4px #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal-header) {
+  gap: 18px !important;
+  padding-bottom: 18px !important;
+  margin-bottom: 18px !important;
+  border-bottom: 1px solid #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal-footer) {
+  padding-top: 18px !important;
+  margin-top: 20px !important;
+  border-top: 1px solid #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal-header h3, .details-modal-header p, .publish-form, .publish-form label, .form-field span, .detail-label, .details-modal-description) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.publish-form) {
+  display: grid !important;
+  gap: 16px !important;
+  margin-top: 0 !important;
+}
+
+body.accessibility-high-contrast :where(.publish-grid) {
+  gap: 16px !important;
+}
+
+body.accessibility-high-contrast :where(.form-field) {
+  gap: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+body.accessibility-high-contrast :where(.form-field input, .form-field textarea, .form-field select, .publish-form input, .publish-form textarea, .publish-form select) {
+  min-height: 52px !important;
+  border: 1px solid #ffff00 !important;
+  border-radius: 12px !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  caret-color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.form-field textarea, .publish-form textarea) {
+  min-height: 150px !important;
+  padding-top: 14px !important;
+}
+
+body.accessibility-high-contrast :where(.form-field select, .publish-form select) {
+  color-scheme: dark !important;
+}
+
+body.accessibility-high-contrast :where(.form-field option, .publish-form option) {
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast .form-field input::placeholder,
+body.accessibility-high-contrast .form-field textarea::placeholder,
+body.accessibility-high-contrast .publish-form input::placeholder,
+body.accessibility-high-contrast .publish-form textarea::placeholder {
+  color: #ffff00 !important;
+  opacity: 1 !important;
+}
+
+body.accessibility-high-contrast :where(.form-field input:focus, .form-field textarea:focus, .form-field select:focus, .publish-form input:focus, .publish-form textarea:focus, .publish-form select:focus) {
+  outline: 3px solid #00ffff !important;
+  outline-offset: 2px !important;
+  border-color: #00ffff !important;
+}
+
+body.accessibility-high-contrast :where(.lost-return-notice, .lost-return-notice-compact) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal-footer div) {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal-footer div strong) {
+  margin-top: 6px !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.details-modal, .swal2-popup, .publish-modal, .deadline-modal) {
+  scrollbar-color: #ffff00 #000000;
+  scrollbar-width: thin;
+}
+
+body.accessibility-high-contrast :where(.details-modal, .swal2-popup, .publish-modal, .deadline-modal)::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+body.accessibility-high-contrast :where(.details-modal, .swal2-popup, .publish-modal, .deadline-modal)::-webkit-scrollbar-track {
+  background: #000000;
+  border-left: 1px solid #ffff00;
+}
+
+body.accessibility-high-contrast :where(.details-modal, .swal2-popup, .publish-modal, .deadline-modal)::-webkit-scrollbar-thumb {
+  background: #ffff00;
+  border: 2px solid #000000;
+  border-radius: 999px;
+}
+
+/* High contrast safety net: every screen must default to yellow text on black. */
+body.accessibility-high-contrast,
+body.accessibility-high-contrast :where(.app-shell, .main-content, .page-section, .details-modal, .swal2-popup, .swal2-html-container) {
+  background-color: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.app-shell *, .details-modal *, .swal2-popup *, .profile-dropdown *, .accessibility-dropdown *, .notifications-dropdown *) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(svg) {
+  color: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body.accessibility-high-contrast :where(input, textarea, select, .swal2-input, .swal2-textarea, .swal2-select) {
+  border-color: #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  caret-color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast input::placeholder,
+body.accessibility-high-contrast textarea::placeholder,
+body.accessibility-high-contrast .swal2-input::placeholder,
+body.accessibility-high-contrast .swal2-textarea::placeholder {
+  color: #ffff00 !important;
+  opacity: 1 !important;
+}
+
+body.accessibility-high-contrast :where(option) {
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.primary-button, .secondary-button, .ghost-button, .session-button, .profile-button, .profile-dropdown-action, .icon-button, .accessibility-option.is-active, .notifications-dropdown-header button, .application-popup-confirm, .application-popup-cancel, .whatsapp-popup-confirm, .swal2-confirm, .swal2-cancel, .ride-hero-button, .inline-icon-button, .lost-card-icon, .detail-tag, .status-pill, .filter-chip, .card-tag, .match-tag, .login-eyebrow, .career-requirements span, .notification-warning, .notification-success, .notification-info) {
+  border-color: #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.primary-button, .secondary-button, .ghost-button, .session-button, .profile-button, .profile-dropdown-action, .icon-button, .accessibility-option.is-active, .notifications-dropdown-header button, .application-popup-confirm, .application-popup-cancel, .whatsapp-popup-confirm, .swal2-confirm, .swal2-cancel, .ride-hero-button, .inline-icon-button, .lost-card-icon, .detail-tag, .status-pill, .filter-chip, .card-tag, .match-tag, .login-eyebrow, .career-requirements span, .notification-warning, .notification-success, .notification-info) :where(*) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.profile-avatar, .swal2-deny, .swal2-close) {
+  border-color: #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.profile-avatar *) {
+  color: #ffff00 !important;
+  stroke: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.career-progress-track) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.career-progress-track span) {
+  background: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(a, button, input, select, textarea, .swal2-confirm, .swal2-cancel):focus-visible {
+  outline: 3px solid #00ffff !important;
+  outline-offset: 3px !important;
+}
+
+/* Final high contrast corrections for navigation, icon tiles and mural wrappers. */
+body.accessibility-high-contrast :where(.sidebar-link.is-active, .sidebar-link:hover, .sidebar-link:focus-visible) {
+  border-color: #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.sidebar-link.is-active *, .sidebar-link:hover *, .sidebar-link:focus-visible *) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.card-icon, .lost-card-icon, .rides-disclaimer-icon, .whatsapp-shortcut-icon, .whatsapp-modal-hero-icon) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.card-icon *, .lost-card-icon *, .rides-disclaimer-icon *, .whatsapp-shortcut-icon *, .whatsapp-modal-hero-icon *) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: currentColor !important;
+}
+
+body.accessibility-high-contrast :where(.application-loading-state, .application-result, .application-disclaimer, .application-contact-box) {
+  border-color: #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.application-loading-state *, .application-result *, .application-disclaimer *, .application-contact-box *) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.application-loading-spinner) {
+  border-color: #ffff00 !important;
+  border-top-color: #000000 !important;
+  background: #ffff00 !important;
+}
+
+body.accessibility-large-font :where(.application-loading-state p, .application-result > p, .application-disclaimer p, .application-contact-box strong) {
+  font-size: 1.08rem !important;
+  line-height: 1.75 !important;
+}
+
+body.accessibility-large-font :where(.application-disclaimer strong, .application-contact-box span) {
+  font-size: 0.98rem !important;
+}
+
+body.accessibility-high-contrast :where(.mural-filter-bar, .mural-post-group, .mural-interested-group, .mural-group-heading, .mural-group-heading > span) {
+  border-color: #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.mural-filter-bar *, .mural-post-group *, .mural-interested-group *, .mural-group-heading *) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.mural-filter-bar .filter-chip, .mural-filter-bar .filter-chip.is-active, .mural-group-heading > span) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.mural-filter-bar .filter-chip *, .mural-filter-bar .filter-chip.is-active *, .mural-group-heading > span *) {
+  color: #000000 !important;
+}
+
+body.accessibility-large-font :where(.mural-group-heading h3) {
+  font-size: 1.45rem !important;
+  line-height: 1.25 !important;
+}
+
+body.accessibility-large-font :where(.mural-group-heading p, .mural-group-heading > span) {
+  font-size: 1.02rem !important;
+  line-height: 1.55 !important;
+}
+
+@media (max-width: 720px) {
+  .mural-group-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .mural-filter-bar .filter-chip {
+    flex: 1 1 130px;
+  }
+}
+
+/* Large text safety net: fixed px typography across cards and panels needs explicit scaling. */
+body.accessibility-large-font :where(.app-shell, .details-modal, .swal2-popup) {
+  font-size: 18px !important;
+}
+
+body.accessibility-large-font :where(.page-heading h2, .career-progress-panel h3, .career-card-header h3, .study-title h3, .home-card h3, .ride-card h3, .lost-card h3, .lost-details-header h3, .mural-card h3, .moderation-card h3, .database-focus-card h3, .application-review h2, .details-modal-header h3) {
+  font-size: clamp(1.45rem, 2vw, 2rem) !important;
+  line-height: 1.25 !important;
+}
+
+body.accessibility-large-font :where(.page-heading p, .career-progress-panel p, .career-card-header p, .study-card p, .study-item p, .home-card p, .ride-card p, .lost-card-body p, .lost-details-header p, .mural-card p, .card-description, .card-subtitle, .application-action-row span, .details-modal-description, .notification-item p, .database-card p, .moderation-card p) {
+  font-size: 1.08rem !important;
+  line-height: 1.75 !important;
+}
+
+body.accessibility-large-font :where(.application-profile-summary span, .career-summary-strip span, .ride-meta-label, .detail-label, .card-meta, .lost-card-meta, .notifications-dropdown-header span, .form-field span, .resume-upload-hint, .career-progress-caption) {
+  font-size: 0.98rem !important;
+  line-height: 1.55 !important;
+}
+
+body.accessibility-large-font :where(.application-profile-summary strong, .career-summary-strip strong, .lost-details-grid strong, .lost-details-footer strong, .ride-meta-grid strong, .database-table-row strong, .moderation-row strong, .study-item h4) {
+  font-size: 1.14rem !important;
+  line-height: 1.5 !important;
+}
+
+body.accessibility-large-font :where(button, .primary-button, .secondary-button, .ghost-button, .session-button, .profile-button, .accessibility-option, .study-item button, .row-actions button, .interest-button, .ghost-upload-button, input, textarea, select) {
+  font-size: 1.05rem !important;
+  line-height: 1.45 !important;
+}
+
+body.accessibility-large-font :where(.detail-tag, .status-pill, .filter-chip, .ride-badge, .card-tag, .match-tag, .login-eyebrow, .career-requirements span) {
+  font-size: 0.95rem !important;
+  line-height: 1.25 !important;
+}
+
+body.accessibility-large-font :where(.application-profile-summary, .career-summary-strip, .ride-meta-grid, .lost-details-grid, .application-review-grid) {
+  gap: 16px !important;
+}
+
+body.accessibility-high-contrast :where(.study-item) {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  column-gap: 16px !important;
+}
+
+body.accessibility-high-contrast :where(.study-item button) {
+  width: auto !important;
+  min-width: 52px !important;
+  max-width: none !important;
+  min-height: 38px !important;
+  height: 38px !important;
+  padding: 0 14px !important;
+  border: 1px solid #ffff00 !important;
+  border-radius: 10px !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+}
+
+body.accessibility-high-contrast :where(.ride-card .row-actions button, .ride-contact-actions .primary-button, .interest-button, .whatsapp-icon-button) {
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.ride-card .row-actions button, .ride-contact-actions .primary-button, .interest-button) {
+  width: auto !important;
+  min-height: 42px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+body.accessibility-high-contrast :where(.ride-contact-actions .primary-button, .interest-button) {
+  flex: 1 1 220px !important;
+}
+
+body.accessibility-high-contrast :where(.whatsapp-icon-button) {
+  width: 48px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 !important;
+}
+
+body.accessibility-high-contrast :where(.ride-card .row-actions button *, .ride-contact-actions .primary-button *, .interest-button *, .whatsapp-icon-button *) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.ride-card .row-actions button:disabled, .ride-contact-actions .primary-button:disabled, .interest-button:disabled, .whatsapp-icon-button:disabled) {
+  opacity: 0.62 !important;
+  cursor: not-allowed !important;
+}
+
+body.accessibility-high-contrast :where(.ghost-upload-button) {
+  min-height: 44px !important;
+  border: 1px solid #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.ghost-upload-button *) {
+  color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-dropdown) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-dropdown-header) {
+  border-bottom-color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-option) {
+  border: 1px solid #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-option span) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-option strong) {
+  background: #000000 !important;
+  color: #ffff00 !important;
+  border: 1px solid #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-option.is-active) {
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-option.is-active span) {
+  color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.accessibility-option.is-active strong) {
+  background: #000000 !important;
+  color: #ffff00 !important;
+  border-color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.study-card, .study-item, .study-list, .study-heading, .study-title, .application-profile-card, .application-profile-summary, .application-profile-summary div, .mural-list, .mural-card, .application-sent-card, .mural-card-tags, .card-header, .card-title-row) {
+  border-color: #ffff00 !important;
+  background: #000000 !important;
+  color: #ffff00 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.study-card *, .study-item *, .study-list *, .study-heading *, .study-title *, .application-profile-card *, .application-profile-summary *, .mural-list *, .mural-card *, .application-sent-card *) {
+  color: #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.study-card, .mural-list) {
+  border: 1px solid #ffff00 !important;
+  border-radius: 18px !important;
+  padding: 18px !important;
+}
+
+body.accessibility-high-contrast :where(.mural-card) {
+  border: 2px solid #ffff00 !important;
+}
+
+body.accessibility-high-contrast :where(.mural-content-grid, .content-grid, .side-panel) {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+body.accessibility-high-contrast :where(.study-item button, .primary-button, .secondary-button, .ghost-button, .card-tag, .match-tag, .detail-tag, .filter-chip, .status-pill) {
+  border-color: #ffff00 !important;
+  background: #ffff00 !important;
+  color: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.study-item button *, .primary-button *, .secondary-button *, .ghost-button *, .card-tag *, .match-tag *, .detail-tag *, .filter-chip *, .status-pill *) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+}
+
+body.accessibility-high-contrast :where(.card-icon *, .lost-card-icon *, .rides-disclaimer-icon *, .whatsapp-shortcut-icon *, .whatsapp-modal-hero-icon *) {
+  color: #000000 !important;
+  stroke: #000000 !important;
+  fill: currentColor !important;
 }
