@@ -440,7 +440,7 @@ function App() {
     }
   }
 
-  async function handleModerationAction(status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) {
+ async function handleModerationAction(status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) {
     if (!sessionUser) return
 
     try {
@@ -450,12 +450,61 @@ function App() {
       })
 
       setAppData(response.data)
-      await Swal.fire({
-        icon: status === 'Aprovado' ? 'success' : 'info',
-        title: `${status} publicacao`,
-        html: `<strong>${item.title}</strong><br />Autor: ${item.author}<br />Categoria: ${item.category}`,
-        confirmButtonText: 'Fechar',
-      })
+
+      if (status === 'Revisao') {
+        await Swal.fire({
+          title: 'Revisao de Publicacao',
+          width: 650,
+          customClass: {
+            popup: 'application-popup',
+            confirmButton: 'primary-button',
+          },
+          buttonsStyling: false,
+          html: `
+            <div style="text-align: left; margin-top: 10px;">
+              <span class="detail-tag">${item.category}</span>
+              <h2 style="margin: 12px 0 16px; color: #163a54; font-size: 24px;">${item.title}</h2>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Local ou Empresa</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.location}</strong>
+                </div>
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">E-mail de Contato</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.contactEmail}</strong>
+                </div>
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Autor (Aluno/Admin)</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.author}</strong>
+                </div>
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Enviado em</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.submittedAt}</strong>
+                </div>
+              </div>
+
+              <div style="background: #f7fafc; padding: 16px; border-radius: 14px; border: 1px solid #e3edf3;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Descricao da Publicacao</span>
+                <div style="color: #466579; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${item.description || 'Nenhuma descricao fornecida.'}</div>
+              </div>
+            </div>
+          `,
+          confirmButtonText: 'Fechar',
+        })
+      } else {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Publicacao aprovada!',
+          text: 'O item ja esta visivel no mural para os alunos.',
+          confirmButtonText: 'Ok',
+          customClass: {
+            confirmButton: 'primary-button',
+          },
+          buttonsStyling: false,
+        })
+      }
+
     } catch (error) {
       await Swal.fire({
         icon: 'error',
@@ -465,7 +514,6 @@ function App() {
       })
     }
   }
-
   async function handleMarkLostItemRecovered(item: LostItem) {
     if (!sessionUser || sessionUser.role !== 'admin') return
 
