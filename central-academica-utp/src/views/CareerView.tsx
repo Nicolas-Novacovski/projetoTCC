@@ -66,9 +66,9 @@ export function CareerView({
           <h2>Perfil Profissional</h2>
           <p>Cadastre seu curriculo e defina preferencias para receber vagas mais alinhadas.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={onSave} disabled={isSaving}>
-          {isSaving ? 'Salvando...' : 'Salvar preferencias'}
-        </button>
+       <button className="primary-button" type="button" onClick={onSave} disabled={isSaving}>
+  {isSaving ? 'Salvando...' : 'Salvar preferencias'}
+</button>
       </div>
       <section className="career-overview" aria-label="Resumo do perfil profissional">
         <div className="career-progress-panel career-hero-panel">
