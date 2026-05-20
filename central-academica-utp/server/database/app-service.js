@@ -141,6 +141,9 @@ function mapModerationItem(row) {
     author: row.autor,
     status: row.status_moderacao,
     submittedAt: formatTimestamp(row.data_submissao),
+    description: row.descricao,
+    contactEmail: row.email_contato || 'secretaria@utp.br',
+    location: row.local_empresa || 'Nao informado',
   }
 }
 
