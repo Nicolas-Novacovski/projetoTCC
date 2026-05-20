@@ -50,9 +50,7 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
           <h2>Achados e Perdidos</h2>
           <p>Itens localizados no campus e registrados para retirada.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={onOpenRegisterModal}>
-          Registrar item
-        </button>
+<button className="primary-button" onClick={...}>Registrar item</button>
       </div>
       <article className="lost-return-notice" role="note" aria-label="Orientacoes para retirada de itens">
         <strong>Retirada APENAS PELOS DONOS</strong>
