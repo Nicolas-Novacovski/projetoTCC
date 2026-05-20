@@ -108,9 +108,9 @@ export function MuralView({
               : 'Vagas, eventos e comunicados oficiais aprovados pela moderacao.'}
           </p>
         </div>
-        <button className="secondary-button" type="button" onClick={onOpenPublishModal}>
-          Postar no Mural
-        </button>
+<button className="primary-button" type="button" onClick={onOpenPublishModal}>
+  Postar no Mural
+</button>
       </div>
       <div className="mural-filter-bar" aria-label="Filtros do mural">
         {categoryFilters.map((category) => (
