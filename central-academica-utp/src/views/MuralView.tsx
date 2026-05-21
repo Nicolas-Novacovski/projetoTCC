@@ -82,14 +82,6 @@ export function MuralView({
         <div className="card-meta" aria-label="Informacoes do autor"><span>Autor: {post.author}</span><span>Status: {post.status}</span></div>
         {post.button ? (
           <div className="application-action-row">
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => onApply(post)}
-              disabled={applicationStatus === 'submitted'}
-            >
-              {applicationStatus === 'submitted' ? 'Interesse declarado' : 'Declarar interesse'}
-            </button>
             <span>{applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}</span>
           </div>
         ) : null}
