@@ -922,6 +922,19 @@ function App() {
           tone: 'info' as const,
         }
       : null,
+
+    ...appData.muralPosts
+      .filter((post) => {
+        const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
+        return post.author === sessionUser.name && post.status === 'Aprovado' && !lidas.includes(post.id)
+      })
+      .map((post) => ({
+        id: `mural-approved-${post.id}`,
+        title: 'Publicação Aprovada!',
+        detail: `O seu post "${post.title}" foi revisado e já está disponível no Mural Acadêmico.`,
+        tone: 'success' as const,
+      })),
+
   ].filter((item): item is { id: string; title: string; detail: string; tone: 'info' | 'warning' | 'success' } => Boolean(item))
 
   return (
@@ -947,12 +960,24 @@ function App() {
           setIsAccessibilityMenuOpen(false)
           setIsNotificationsOpen(false)
         }}
-        onToggleAccessibilityMenu={() => {
+onToggleAccessibilityMenu={() => {
           setIsAccessibilityMenuOpen((current) => !current)
           setIsProfileMenuOpen(false)
           setIsNotificationsOpen(false)
         }}
-        onToggleNotifications={() => {
+      onToggleNotifications={() => {
+          // Se o menu já estava aberto, significa que você está clicando para fechar.
+          // É só nesse momento de fechamento que marcamos como "lido" na memória!
+          if (isNotificationsOpen) {
+            const aprovados = appData.muralPosts
+              .filter((post) => post.author === sessionUser.name && post.status === 'Aprovado')
+              .map((post) => post.id)
+            
+            const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
+            const novasLidas = Array.from(new Set([...lidas, ...aprovados]))
+            localStorage.setItem('notificacoesLidas', JSON.stringify(novasLidas))
+          }
+
           setIsNotificationsOpen((current) => !current)
           setIsProfileMenuOpen(false)
           setIsAccessibilityMenuOpen(false)

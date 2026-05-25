@@ -35,10 +35,31 @@ async function bootstrap() {
   await connectToDatabase()
   await ensureSeedData()
 
+  app.get('/api/notificacoes/mural/:id_usuario', async (req, res) => {
+    const { id_usuario } = req.params;
+    
+    try {
+        // Busca as publicações DESTE usuário que estão com status Aprovado
+        const resultado = await db.query(
+            `SELECT id_publicacao, titulo, status_moderacao 
+             FROM publicacoes_mural 
+             WHERE id_autor = $1 AND status_moderacao = 'Aprovado'`,
+            [id_usuario]
+        );
+        
+        res.json(resultado.rows);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Erro ao buscar status das publicações.' });
+    }
+});
+
   app.listen(env.port, () => {
     console.log(`Backend iniciado em http://localhost:${env.port}`)
   })
 }
+
+
 
 bootstrap().catch((error) => {
   console.error('Falha ao iniciar a aplicacao.', error)
