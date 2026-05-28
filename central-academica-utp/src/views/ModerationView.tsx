@@ -39,15 +39,33 @@ export function ModerationView({
       <div className="moderation-grid">
         <section className="moderation-card moderation-table-card">
           <div className="moderation-card-header"><div><h3>Fila de aprovacao</h3><p>Itens recebidos pelo mural academico.</p></div><button className="ghost-button" type="button" onClick={onRefresh}>Atualizar</button></div>
-          <div className="moderation-table">
-            <div className="moderation-table-head"><span>Titulo</span><span>Categoria</span><span>Autor</span><span>Status</span><span>Acoes</span></div>
+         <div className="moderation-table">
+            <div className="moderation-table-head">
+              <span>Titulo</span>
+              <span>Categoria</span>
+              <span>Autor</span>
+              <span>Status</span>
+              <span style={{ textAlign: 'center' }}>Acoes</span>
+            </div>
             {moderationQueue.map((item) => (
               <div key={item.id} className="moderation-row">
                 <div><strong>{item.title}</strong><small>{item.submittedAt}</small></div>
                 <span>{item.category}</span>
                 <span>{item.author}</span>
                 <span className={`status-pill status-${slugifyStatus(item.status)}`}>{item.status}</span>
-                <div className="row-actions"><button type="button" onClick={() => onModerate('Aprovado', item)}>Aprovar</button><button type="button" onClick={() => onModerate('Revisao', item)}>Revisar</button></div>
+                <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center', width: '100%' }}>
+                  <button type="button" onClick={() => onModerate('Aprovado', item)}>Aprovar</button>
+                  <button type="button" onClick={() => onModerate('Revisao', item)}>Revisar</button>
+                  
+                  {/* BOTAO DE EXCLUIR */}
+                  <button 
+                    type="button" 
+                    style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} 
+                    onClick={() => alert('Item excluido visualmente! A integracao com o banco Neon faremos amanha.')}
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             ))}
           </div>
