@@ -1012,7 +1012,12 @@ function App() {
         onToggleAccessibilitySetting={handleToggleAccessibilitySetting}
         onLogout={() => void handleLogout()}
       >
-        {currentView === 'home' ? <HomeView dashboard={appData.dashboard} /> : null}
+        {currentView === 'home' ? (
+          <HomeView 
+            dashboard={appData.dashboard} 
+            onNavigate={(view) => setCurrentView(view)} 
+          />
+        ) : null}
         {currentView === 'rides' ? (
           <RidesView
             currentUserId={sessionUser.id}
