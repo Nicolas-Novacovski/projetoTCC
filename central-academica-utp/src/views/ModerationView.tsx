@@ -1,3 +1,4 @@
+import Swal from 'sweetalert2'
 import { showFeatureAlert } from '../lib/alerts'
 import { slugifyStatus } from '../lib/navigation'
 import type { DashboardStats, LostItem, ModerationPost, PostStatus, Report } from '../types/app'
@@ -10,7 +11,7 @@ type ModerationViewProps = {
   onRefresh: () => void
   onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) => void
   onMarkLostItemRecovered: (item: LostItem) => void
-onDelete: (item: ModerationPost) => void
+  onDelete: (item: ModerationPost) => void
 }
 
 export function ModerationView({
@@ -25,13 +26,56 @@ export function ModerationView({
 }: ModerationViewProps) {
   const approvedCount = moderationQueue.filter((item) => item.status === 'Aprovado').length
 
+  async function handleConsultarItem(item: LostItem) {
+    await Swal.fire({
+      title: 'Detalhes do Item',
+      width: 600,
+      customClass: {
+        popup: 'application-popup',
+        confirmButton: 'primary-button', // Botão Fechar idêntico aos outros modais
+      },
+      buttonsStyling: false,
+      html: `
+        <div style="text-align: left;">
+          <span class="detail-tag" style="margin-bottom: 8px; display: inline-block;">${item.category}</span>
+          <h2 style="margin: 0 0 20px 0; color: #163a54; font-size: 24px;">${item.title}</h2>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Local Encontrado</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.place}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Data do Registro</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.date}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Registrado por</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.foundBy}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Contato</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.contact}</strong>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 16px; border-radius: 8px;">
+            <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Descrição</span>
+            <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.5;">${item.description || 'Nenhuma descrição fornecida.'}</p>
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Fechar',
+    })
+  }
+
   return (
     <section className="page-section moderation-section">
       <div className="page-heading">
         <div><h2>Central de Moderacao</h2><p>Revise publicacoes, acompanhe denuncias e aprove o que vai para o mural.</p></div>
         <button className="primary-button" type="button" onClick={() => void showFeatureAlert('Exportacao de relatorio', 'A fila de moderacao e as denuncias ja estao no banco. Se quiser, o proximo passo pode ser gerar CSV ou PDF.')}>
-  Exportar relatorio
-</button>
+          Exportar relatorio
+        </button>
       </div>
       <div className="moderation-overview">
         <article className="overview-card"><span>Em analise</span><strong>{dashboard.pendingModerationCount}</strong><p>Publicacoes aguardando revisao manual.</p></article>
@@ -41,7 +85,7 @@ export function ModerationView({
       <div className="moderation-grid">
         <section className="moderation-card moderation-table-card">
           <div className="moderation-card-header"><div><h3>Fila de aprovacao</h3><p>Itens recebidos pelo mural academico.</p></div></div>
-         <div className="moderation-table">
+          <div className="moderation-table">
             <div className="moderation-table-head">
               <span>Titulo</span>
               <span>Categoria</span>
@@ -58,15 +102,7 @@ export function ModerationView({
                 <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center', width: '100%' }}>
                   <button type="button" onClick={() => onModerate('Aprovado', item)}>Aprovar</button>
                   <button type="button" onClick={() => onModerate('Revisao', item)}>Revisar</button>
-                  
-{/* BOTAO DE EXCLUIR */}
-                  <button 
-  type="button" 
-  style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} 
-  onClick={() => onDelete(item)} // Passamos o item inteiro agora
->
-  Excluir
-</button>
+                  <button type="button" style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} onClick={() => onDelete(item)}>Excluir</button>
                 </div>
               </div>
             ))}
@@ -85,9 +121,33 @@ export function ModerationView({
                     <p>{item.category} - {item.place}</p>
                     <small>{item.date}</small>
                   </div>
-                  <button type="button" onClick={() => onMarkLostItemRecovered(item)}>
-                    Marcar recuperado
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="status-pill status-success" 
+                      style={{ cursor: 'pointer', border: 'none', margin: 0 }} 
+                      onClick={() => onMarkLostItemRecovered(item)}
+                    >
+                      Marcar recuperado
+                    </button>
+                    {/* Botão padronizado com estilo manual forçado para evitar herança de cor verde */}
+                    <button 
+                      type="button" 
+                      style={{ 
+                        margin: 0, 
+                        padding: '4px 12px', 
+                        fontSize: '13px', 
+                        cursor: 'pointer', 
+                        backgroundColor: '#ffffff', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '6px', 
+                        color: '#475569' 
+                      }} 
+                      onClick={() => void handleConsultarItem(item)}
+                    >
+                      Ver detalhes
+                    </button>
+                  </div>
                 </article>
               ))}
               {lostItems.length === 0 ? <p className="empty-state-text">Nenhum item aguardando retirada.</p> : null}
