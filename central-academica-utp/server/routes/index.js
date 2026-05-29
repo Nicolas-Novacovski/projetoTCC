@@ -19,6 +19,7 @@ import {
   updateRideRequest,
   updateRideRequestStatus,
   updatePublicationStatus,
+  deletePublication,
 } from '../database/app-service.js'
 import { getDatabaseConfig } from '../database/connection.js'
 
@@ -424,7 +425,25 @@ router.patch('/publications/:id/status', async (request, response) => {
     data,
   })
 })
+router.delete('/publications/:id', async (request, response) => {
+  const publicationId = Number(request.params.id)
 
+  try {
+    // Essa função vai morar lá no seu arquivo de services
+    await deletePublication(publicationId)
+
+    return response.json({
+      status: 'ok',
+      message: 'Publicacao excluida permanentemente.',
+    })
+  } catch (error) {
+    console.error('Erro ao deletar publicacao:', error)
+    return response.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao excluir a publicacao.',
+    })
+  }
+})
 router.put('/career-profile/:userId', async (request, response) => {
   const userId = Number(request.params.userId)
   const data = await saveCareerProfile(userId, request.body)

@@ -979,6 +979,25 @@ export async function updatePublicationStatus(publicationId, status, userId, rol
   return getAppData(userId, role)
 }
 
+export async function deletePublication(publicationId) {
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      delete from publicacoes_mural
+      where id_publicacao = $1
+      returning id_publicacao
+    `,
+    [publicationId],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Publicacao nao encontrada para exclusao.')
+  }
+
+  return result.rows[0]
+}
+
 export async function saveCareerProfile(userId, profile) {
   const pool = await connectToDatabase()
   const existing = await pool.query(

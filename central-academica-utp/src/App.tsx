@@ -106,6 +106,7 @@ function App() {
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
+  const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
   const [publishForm, setPublishForm] = useState<PublishForm>({
     category: 'Vaga',
     title: '',
@@ -440,7 +441,7 @@ function App() {
     }
   }
 
- async function handleModerationAction(status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) {
+  async function handleModerationAction(status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) {
     if (!sessionUser) return
 
     try {
@@ -514,6 +515,32 @@ function App() {
       })
     }
   }
+
+  // 1. Esta função apenas abre o Modal, guardando o item no estado que você acabou de criar
+  const handleRequestDelete = (item: ModerationPost) => {
+    setItemParaExcluir(item);
+  };
+  
+  // 2. Esta função é chamada quando o usuário clica em "Excluir agora" dentro do Modal
+  const handleConfirmDelete = async () => {
+    if (!itemParaExcluir || !sessionUser) return;
+
+    try {
+      await requestJson(`/api/publications/${itemParaExcluir.id}`, {
+        method: 'DELETE',
+      });
+      
+      setItemParaExcluir(null); // Fecha o modal após o sucesso
+      
+      // Atualiza os dados da tela usando a função nativa do seu projeto
+      void refreshAppDataForUser(sessionUser); 
+      
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao excluir a publicacao.');
+    }
+  };
+
   async function handleMarkLostItemRecovered(item: LostItem) {
     if (!sessionUser || sessionUser.role !== 'admin') return
 
@@ -960,7 +987,7 @@ function App() {
           setIsAccessibilityMenuOpen(false)
           setIsNotificationsOpen(false)
         }}
-onToggleAccessibilityMenu={() => {
+        onToggleAccessibilityMenu={() => {
           setIsAccessibilityMenuOpen((current) => !current)
           setIsProfileMenuOpen(false)
           setIsNotificationsOpen(false)
@@ -1108,6 +1135,7 @@ onToggleAccessibilityMenu={() => {
             onRefresh={() => void refreshAppData()}
             onModerate={(status, item) => void handleModerationAction(status, item)}
             onMarkLostItemRecovered={(item) => void handleMarkLostItemRecovered(item)}
+            onDelete={(item) => void handleRequestDelete(item)}
           />
         ) : null}
         {currentView === 'database' ? (
@@ -1149,6 +1177,39 @@ onToggleAccessibilityMenu={() => {
           onChange={setLostItemForm}
         />
       ) : null}
+
+     {/* NOSSO MODAL DE EXCLUSÃO ENTRA EXATAMENTE AQUI */}
+      {itemParaExcluir ? (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <div className="modal-icon-warning" style={{ fontSize: '50px', marginBottom: '15px' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 10px 0' }}>Excluir publicacao?</h3>
+            <p style={{ margin: '0 0 24px 0', color: '#4b5563' }}>
+              Voce esta prestes a remover permanentemente <strong>"{itemParaExcluir.title}"</strong> do mural. Esta acao nao pode ser desfeita.
+            </p>
+            
+            <div className="modal-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
+              <button 
+                type="button"
+                className="ghost-button" 
+                onClick={() => setItemParaExcluir(null)}
+                style={{ margin: 0 }}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button"
+                className="primary-button" 
+                style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0 }} 
+                onClick={() => void handleConfirmDelete()}
+              >
+                Excluir agora
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
     </>
   )
 }

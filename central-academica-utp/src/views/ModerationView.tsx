@@ -10,6 +10,7 @@ type ModerationViewProps = {
   onRefresh: () => void
   onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) => void
   onMarkLostItemRecovered: (item: LostItem) => void
+onDelete: (item: ModerationPost) => void
 }
 
 export function ModerationView({
@@ -20,6 +21,7 @@ export function ModerationView({
   onRefresh,
   onModerate,
   onMarkLostItemRecovered,
+  onDelete,
 }: ModerationViewProps) {
   const approvedCount = moderationQueue.filter((item) => item.status === 'Aprovado').length
 
@@ -38,7 +40,7 @@ export function ModerationView({
       </div>
       <div className="moderation-grid">
         <section className="moderation-card moderation-table-card">
-          <div className="moderation-card-header"><div><h3>Fila de aprovacao</h3><p>Itens recebidos pelo mural academico.</p></div><button className="ghost-button" type="button" onClick={onRefresh}>Atualizar</button></div>
+          <div className="moderation-card-header"><div><h3>Fila de aprovacao</h3><p>Itens recebidos pelo mural academico.</p></div></div>
          <div className="moderation-table">
             <div className="moderation-table-head">
               <span>Titulo</span>
@@ -57,14 +59,14 @@ export function ModerationView({
                   <button type="button" onClick={() => onModerate('Aprovado', item)}>Aprovar</button>
                   <button type="button" onClick={() => onModerate('Revisao', item)}>Revisar</button>
                   
-                  {/* BOTAO DE EXCLUIR */}
+{/* BOTAO DE EXCLUIR */}
                   <button 
-                    type="button" 
-                    style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} 
-                    onClick={() => alert('Item excluido visualmente! A integracao com o banco Neon faremos amanha.')}
-                  >
-                    Excluir
-                  </button>
+  type="button" 
+  style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} 
+  onClick={() => onDelete(item)} // Passamos o item inteiro agora
+>
+  Excluir
+</button>
                 </div>
               </div>
             ))}

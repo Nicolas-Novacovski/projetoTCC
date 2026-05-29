@@ -143,15 +143,21 @@ export function MuralView({
             </section>
           ) : null}
         </div>
-        <aside className="side-panel">
-          <div className="study-card application-profile-card">
-            <div className="study-heading"><div className="study-title"><BriefcaseIcon /><h3>Meu interesse</h3></div></div>
-            <div className="application-profile-summary">
-              <div><span>Area</span><strong>{careerProfile.desiredArea || 'Completar perfil'}</strong></div>
-              <div><span>E-mail</span><strong>{careerProfile.contactEmail || 'Pendente'}</strong></div>
-              <div><span>Curriculo</span><strong>{careerProfile.resumeFileName || 'Pendente'}</strong></div>
+       <aside className="side-panel">
+          
+          {/* O CARD 'MEU INTERESSE' SÓ APARECE PARA O ALUNO */}
+          {userRole === 'student' ? (
+            <div className="study-card application-profile-card">
+              <div className="study-heading"><div className="study-title"><BriefcaseIcon /><h3>Meu interesse</h3></div></div>
+              <div className="application-profile-summary">
+                <div><span>Area</span><strong>{careerProfile.desiredArea || 'Completar perfil'}</strong></div>
+                <div><span>E-mail</span><strong>{careerProfile.contactEmail || 'Pendente'}</strong></div>
+                <div><span>Curriculo</span><strong>{careerProfile.resumeFileName || 'Pendente'}</strong></div>
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {/* O CARD DE PRAZOS CONTINUA APARECENDO PARA TODOS */}
           <div className="study-card">
             <div className="study-heading"><div className="study-title"><CalendarIcon /><h3>Prazos Importantes</h3></div></div>
             <div className="study-list">
