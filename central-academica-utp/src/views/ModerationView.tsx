@@ -9,12 +9,13 @@ type ModerationViewProps = {
   dashboard: DashboardStats
   lostItems: LostItem[]
   rides: RideOffer[]
-  rideRequests: any[] // Lista de pedidos vindos do App.tsx
+  rideRequests: any[] 
   onRefresh: () => void
   onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) => void
   onMarkLostItemRecovered: (item: LostItem) => void
   onDelete: (item: ModerationPost) => void
   onDeleteRideItem: (id: number, type: 'Oferta' | 'Pedido', title: string) => void
+  onOpenLostItemModal: () => void // <-- Adicionado aqui
 }
 
 export function ModerationView({
@@ -29,10 +30,10 @@ export function ModerationView({
   onMarkLostItemRecovered,
   onDelete,
   onDeleteRideItem,
+  onOpenLostItemModal, // <-- Adicionado aqui
 }: ModerationViewProps) {
   const approvedCount = moderationQueue.filter((item) => item.status === 'Aprovado').length
 
-  // UNIFICAÇÃO DA LISTA: Mistura ofertas e pedidos em uma única matriz para a tabela
   const combinedRides = [
     ...rides.map((r) => ({
       id: r.id,
@@ -76,7 +77,6 @@ export function ModerationView({
     })
   }
 
-  // === NOVO MODAL DE REVISÃO COMPLETO ===
   async function handleReviewRide(item: any) {
     if (item.type === 'Oferta') {
       const ride = item.raw;
@@ -267,11 +267,23 @@ export function ModerationView({
         </div>
 
         <aside className="moderation-side">
-          {/* ACHADOS E PERDIDOS E ALERTAS MANTIDOS AQUI */}
           <section className="moderation-card">
-            <div className="moderation-card-header">
-              <div><h3>Achados e Perdidos</h3><p>Marque itens retirados pelo dono como recuperados.</p></div>
+            {/* === CABEÇALHO DO CARD COM O NOVO BOTÃO === */}
+            <div className="moderation-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3>Achados e Perdidos</h3>
+                <p>Marque itens retirados pelo dono como recuperados.</p>
+              </div>
+              <button 
+                type="button" 
+                className="primary-button" 
+                style={{ padding: '6px 12px', fontSize: '13px', whiteSpace: 'nowrap' }} 
+                onClick={onOpenLostItemModal}
+              >
+                Registrar Item
+              </button>
             </div>
+            
             <div className="lost-admin-list">
               {lostItems.map((item) => (
                 <article key={item.id} className="lost-admin-item">
@@ -290,8 +302,10 @@ export function ModerationView({
                   </div>
                 </article>
               ))}
+              {lostItems.length === 0 ? <p className="empty-state-text">Nenhum item aguardando retirada.</p> : null}
             </div>
           </section>
+
           <section className="moderation-card">
             <div className="moderation-card-header"><div><h3>Alertas</h3><p>Ocorrencias recentes sinalizadas no sistema.</p></div></div>
             <div className="report-list">

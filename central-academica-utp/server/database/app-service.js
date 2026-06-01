@@ -527,6 +527,7 @@ export async function createPublication({ userId, role, category, title, locatio
 
 export async function createLostItem({
   userId,
+  role, // <-- Adicionado aqui
   title,
   place,
   date,
@@ -563,7 +564,8 @@ export async function createLostItem({
     detail: { title, category, place, status: lostItemOpenStatus },
   })
 
-  return getAppData(userId, 'student')
+  // 👇 Substituição feita aqui na última linha:
+  return getAppData(userId, role || 'student')
 }
 
 export async function createRide({

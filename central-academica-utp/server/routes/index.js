@@ -171,7 +171,8 @@ router.post('/applications', async (request, response) => {
 })
 
 router.post('/lost-items', async (request, response) => {
-  const { userId, title, place, date, category, description, foundBy } = request.body
+  // 👇 Adicione o role aqui na extração do body:
+  const { userId, role, title, place, date, category, description, foundBy } = request.body
 
   if (!userId || !title || !place || !date || !category || !description || !foundBy) {
     return response.status(400).json({
@@ -182,6 +183,7 @@ router.post('/lost-items', async (request, response) => {
 
   const data = await createLostItem({
     userId: Number(userId),
+    role: role || 'student', 
     title,
     place,
     date,

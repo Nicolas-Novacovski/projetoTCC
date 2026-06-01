@@ -835,7 +835,8 @@ function App() {
     try {
       const response = await requestJson<{ data: AppData }>('/api/lost-items', {
         method: 'POST',
-        body: JSON.stringify({ userId: sessionUser.id, ...lostItemForm }),
+     
+        body: JSON.stringify({ userId: sessionUser.id, role: sessionUser.role, ...lostItemForm }),
       })
 
       setAppData(response.data)
@@ -1165,6 +1166,13 @@ function App() {
             onMarkLostItemRecovered={(item) => void handleMarkLostItemRecovered(item)}
             onDelete={(item) => void handleRequestDelete(item)}
             onDeleteRideItem={(id, type, title) => setRideItemParaExcluir({ id, type, title })}
+            onOpenLostItemModal={() => {
+              setLostItemForm((current) => ({
+                ...current,
+                foundBy: current.foundBy || sessionUser.name,
+              }))
+              setIsLostItemModalOpen(true)
+            }}
           />
         ) : null}
         {currentView === 'database' ? (
