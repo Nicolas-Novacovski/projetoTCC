@@ -108,6 +108,7 @@ function mapRide(row) {
     zone: row.zona_destino,
     title: row.titulo,
     driver: row.motorista,
+    driverName: row.motorista, // Adicionado para garantir que a tela de moderacao pegue o nome
     time: `Saida ${row.horario_saida}`,
     seats: row.vagas,
     meeting: row.ponto_encontro,
@@ -614,6 +615,38 @@ export async function createRide({
   return getAppData(userId, 'student')
 }
 
+// ==== NOVA FUNÇÃO: Deletar Carona ====
+export async function deleteRide(rideId, userId) {
+  const pool = await connectToDatabase()
+
+  // Opcional: Aqui poderiamos verificar se o userId é ADMIN ou DONO da carona
+  // Para simplificar, estamos assumindo que a chamada que chegou aqui já tem permissão.
+  
+  const result = await pool.query(
+    `
+      delete from caronas
+      where id_carona = $1
+      returning id_carona
+    `,
+    [rideId],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Carona nao encontrada para exclusao.')
+  }
+
+  await recordAuditLog({
+    userId,
+    action: 'CARONA_EXCLUIDA',
+    entity: 'caronas',
+    entityId: rideId,
+    detail: { message: 'Carona deletada permanentemente pelo moderador/usuario' },
+  })
+
+  return result.rows[0]
+}
+// =====================================
+
 export async function createRideRequest({ zone, userId, whatsapp, pickupAddress, weekdays = [] }) {
   const pool = await connectToDatabase()
   const normalizedWeekdays = normalizeWeekdays(weekdays)
@@ -734,13 +767,13 @@ export async function updateRide({
     `
       update caronas
       set zona_destino = $3,
-          titulo = $4,
-          horario_saida = $5,
-          vagas = $6,
-          ponto_encontro = $7,
-          veiculo = $8,
-          whatsapp_motorista = $9,
-          dias_semana = $10
+        titulo = $4,
+        horario_saida = $5,
+        vagas = $6,
+        ponto_encontro = $7,
+        veiculo = $8,
+        whatsapp_motorista = $9,
+        dias_semana = $10
       where id_carona = $1
         and id_motorista = $2
       returning id_carona
@@ -802,9 +835,9 @@ export async function updateRideRequest({ requestId, userId, zone, whatsapp, pic
     `
       update pedidos_caronas
       set zona_destino = $3,
-          whatsapp_solicitante = $4,
-          endereco_embarque = $5,
-          dias_semana = $6
+        whatsapp_solicitante = $4,
+        endereco_embarque = $5,
+        dias_semana = $6
       where id_pedido = $1
         and id_solicitante = $2
       returning id_pedido
@@ -873,8 +906,8 @@ export async function updateRideRequestStatus(requestId, userId, status) {
     `
       update pedidos_caronas
       set status_pedido = $2,
-          id_usuario_aceitou = $3,
-          motorista_aceitou_whatsapp = $4
+        id_usuario_aceitou = $3,
+        motorista_aceitou_whatsapp = $4
       where id_pedido = $1
       returning id_pedido
     `,
@@ -892,17 +925,17 @@ export async function updateRideRequestStatus(requestId, userId, status) {
   return getAppData(userId, 'student')
 }
 
-export async function deleteRideRequest(requestId, userId) {
+export async function deleteRideRequest(requestId, userId, role = 'student') {
   const pool = await connectToDatabase()
 
   const result = await pool.query(
     `
       delete from pedidos_caronas
       where id_pedido = $1
-        and id_solicitante = $2
+        and ($2 = 'admin' or id_solicitante = $3)
       returning id_pedido
     `,
-    [requestId, userId],
+    [requestId, role, userId],
   )
 
   if (!result.rowCount) {
@@ -917,7 +950,8 @@ export async function deleteRideRequest(requestId, userId) {
     detail: {},
   })
 
-  return getAppData(userId, 'student')
+  // Retorna os dados corretos dependendo de quem excluiu
+  return getAppData(userId, role === 'admin' ? 'admin' : 'student')
 }
 
 export async function markLostItemRecovered(itemId, userId, role) {
@@ -1016,13 +1050,13 @@ export async function saveCareerProfile(userId, profile) {
       `
         update perfis_profissionais
         set curso = $2,
-            semestre = $3,
-            arquivo_curriculo = $4,
-            email_contato = $5,
-            area_desejada = $6,
-            pretensao_salarial = $7,
-            modelo_trabalho = $8,
-            cidade_preferencia = $9
+          semestre = $3,
+          arquivo_curriculo = $4,
+          email_contato = $5,
+          area_desejada = $6,
+          pretensao_salarial = $7,
+          modelo_trabalho = $8,
+          cidade_preferencia = $9
         where id_perfil = $1
       `,
       [

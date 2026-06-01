@@ -106,7 +106,12 @@ function App() {
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
+  
   const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
+  
+  // Novo estado que entende se é Oferta ou Pedido
+  const [rideItemParaExcluir, setRideItemParaExcluir] = useState<{ id: number, type: 'Oferta' | 'Pedido', title: string } | null>(null);
+  
   const [publishForm, setPublishForm] = useState<PublishForm>({
     category: 'Vaga',
     title: '',
@@ -516,12 +521,13 @@ function App() {
     }
   }
 
-  // 1. Esta função apenas abre o Modal, guardando o item no estado que você acabou de criar
+  // === MODAIS DE EXCLUSÃO ===
+  
+  // 1. Excluir Publicações do Mural
   const handleRequestDelete = (item: ModerationPost) => {
     setItemParaExcluir(item);
   };
   
-  // 2. Esta função é chamada quando o usuário clica em "Excluir agora" dentro do Modal
   const handleConfirmDelete = async () => {
     if (!itemParaExcluir || !sessionUser) return;
 
@@ -530,14 +536,31 @@ function App() {
         method: 'DELETE',
       });
       
-      setItemParaExcluir(null); // Fecha o modal após o sucesso
-      
-      // Atualiza os dados da tela usando a função nativa do seu projeto
+      setItemParaExcluir(null);
       void refreshAppDataForUser(sessionUser); 
       
     } catch (error) {
       console.error(error);
       alert('Erro ao excluir a publicacao.');
+    }
+  };
+
+  // 2. Excluir Caronas (Unificado: Ofertas e Pedidos)
+  const handleConfirmDeleteRideItem = async () => {
+    if (!rideItemParaExcluir || !sessionUser) return;
+
+    try {
+      if (rideItemParaExcluir.type === 'Oferta') {
+        await requestJson(`/api/rides/${rideItemParaExcluir.id}?userId=${sessionUser.id}`, { method: 'DELETE' });
+      } else {
+        await requestJson(`/api/ride-requests/${rideItemParaExcluir.id}?userId=${sessionUser.id}&role=${sessionUser.role}`, { method: 'DELETE' });
+      }
+      
+      setRideItemParaExcluir(null);
+      void refreshAppDataForUser(sessionUser); 
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao excluir o item da carona.');
     }
   };
 
@@ -993,8 +1016,6 @@ function App() {
           setIsNotificationsOpen(false)
         }}
       onToggleNotifications={() => {
-          // Se o menu já estava aberto, significa que você está clicando para fechar.
-          // É só nesse momento de fechamento que marcamos como "lido" na memória!
           if (isNotificationsOpen) {
             const aprovados = appData.muralPosts
               .filter((post) => post.author === sessionUser.name && post.status === 'Aprovado')
@@ -1137,10 +1158,13 @@ function App() {
             reports={appData.reports}
             dashboard={appData.dashboard}
             lostItems={appData.lostItems}
+            rides={appData.rides ?? []}
+            rideRequests={appData.rideRequestsInbox ?? []}
             onRefresh={() => void refreshAppData()}
             onModerate={(status, item) => void handleModerationAction(status, item)}
             onMarkLostItemRecovered={(item) => void handleMarkLostItemRecovered(item)}
             onDelete={(item) => void handleRequestDelete(item)}
+            onDeleteRideItem={(id, type, title) => setRideItemParaExcluir({ id, type, title })}
           />
         ) : null}
         {currentView === 'database' ? (
@@ -1183,7 +1207,7 @@ function App() {
         />
       ) : null}
 
-     {/* NOSSO MODAL DE EXCLUSÃO ENTRA EXATAMENTE AQUI */}
+      {/* NOSSO MODAL DE EXCLUSÃO DE PUBLICAÇÕES */}
       {itemParaExcluir ? (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
@@ -1208,6 +1232,28 @@ function App() {
                 style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0 }} 
                 onClick={() => void handleConfirmDelete()}
               >
+                Excluir agora
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* NOSSO MODAL UNIFICADO DE CARONAS (OFERTAS E PEDIDOS) */}
+      {rideItemParaExcluir ? (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <div className="modal-icon-warning" style={{ fontSize: '50px', marginBottom: '15px' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 10px 0' }}>Excluir {rideItemParaExcluir.type.toLowerCase()}?</h3>
+            <p style={{ margin: '0 0 24px 0', color: '#4b5563' }}>
+              Voce esta prestes a remover permanentemente a {rideItemParaExcluir.type.toLowerCase()} <strong>"{rideItemParaExcluir.title}"</strong>. Esta acao nao pode ser desfeita.
+            </p>
+            
+            <div className="modal-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
+              <button type="button" className="ghost-button" onClick={() => setRideItemParaExcluir(null)} style={{ margin: 0 }}>
+                Cancelar
+              </button>
+              <button type="button" className="primary-button" style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0 }} onClick={() => void handleConfirmDeleteRideItem()}>
                 Excluir agora
               </button>
             </div>
