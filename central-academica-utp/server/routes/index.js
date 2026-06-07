@@ -20,6 +20,9 @@ import {
   updateRideRequest,
   updateRideRequestStatus,
   updatePublicationStatus,
+  deletePublication,
+  // IMPORTANTE: Adicionei esta função que chamaremos para excluir a carona
+  deleteRide,
 } from '../database/app-service.js'
 import { getDatabaseConfig } from '../database/connection.js'
 
@@ -169,7 +172,8 @@ router.post('/applications', async (request, response) => {
 })
 
 router.post('/lost-items', async (request, response) => {
-  const { userId, title, place, date, category, description, foundBy } = request.body
+  // 👇 Adicione o role aqui na extração do body:
+  const { userId, role, title, place, date, category, description, foundBy } = request.body
 
   if (!userId || !title || !place || !date || !category || !description || !foundBy) {
     return response.status(400).json({
@@ -180,6 +184,7 @@ router.post('/lost-items', async (request, response) => {
 
   const data = await createLostItem({
     userId: Number(userId),
+    role: role || 'student',
     title,
     place,
     date,
@@ -295,6 +300,36 @@ router.patch('/rides/:id', async (request, response) => {
   })
 })
 
+// === NOVA ROTA DE EXCLUSÃO DE CARONA ===
+router.delete('/rides/:id', async (request, response) => {
+  const rideId = Number(request.params.id)
+  const userId = Number(request.query.userId) // Quem está deletando (Admin ou Criador)
+
+  if (!rideId || !userId) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos para excluir a carona.',
+    })
+  }
+
+  try {
+    // Chamamos a função de serviço (que precisaremos garantir que exista no app-service.js)
+    await deleteRide(rideId, userId)
+
+    return response.json({
+      status: 'ok',
+      message: 'Carona excluida com sucesso.',
+    })
+  } catch (error) {
+    console.error('Erro ao deletar carona:', error)
+    return response.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao excluir a carona.',
+    })
+  }
+})
+// ======================================
+
 router.post('/rides/:id/interests', async (request, response) => {
   const rideId = Number(request.params.id)
   const { userId, whatsapp, pickupAddress } = request.body
@@ -367,6 +402,7 @@ router.patch('/ride-requests/:id/status', async (request, response) => {
 router.delete('/ride-requests/:id', async (request, response) => {
   const requestId = Number(request.params.id)
   const userId = Number(request.query.userId)
+  const role = request.query.role
 
   if (!requestId || !userId) {
     return response.status(400).json({
@@ -375,7 +411,8 @@ router.delete('/ride-requests/:id', async (request, response) => {
     })
   }
 
-  const data = await deleteRideRequest(requestId, userId)
+
+  const data = await deleteRideRequest(requestId, userId, role)
 
   return response.json({
     status: 'ok',
@@ -424,6 +461,25 @@ router.patch('/publications/:id/status', async (request, response) => {
     status: 'ok',
     data,
   })
+})
+
+router.delete('/publications/:id', async (request, response) => {
+  const publicationId = Number(request.params.id)
+
+  try {
+    await deletePublication(publicationId)
+
+    return response.json({
+      status: 'ok',
+      message: 'Publicacao excluida permanentemente.',
+    })
+  } catch (error) {
+    console.error('Erro ao deletar publicacao:', error)
+    return response.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao excluir a publicacao.',
+    })
+  }
 })
 
 router.put('/career-profile/:userId', async (request, response) => {

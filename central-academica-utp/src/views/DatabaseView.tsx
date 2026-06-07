@@ -38,9 +38,9 @@ export function DatabaseView({ snapshot, isLoading, onLoad }: DatabaseViewProps)
           <h2>Visualizacao de Tabelas</h2>
           <p>Ambiente de teste para o administrador inspecionar os registros atuais do banco.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={onLoad} disabled={isLoading}>
-          {isLoading ? 'Carregando...' : 'Atualizar tabelas'}
-        </button>
+     <button className="primary-button" type="button" onClick={onLoad} disabled={isLoading}>
+  {isLoading ? 'Carregando...' : 'Atualizar tabelas'}
+</button>
       </div>
 
       {!snapshot ? (

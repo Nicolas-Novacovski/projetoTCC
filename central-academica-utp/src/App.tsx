@@ -116,6 +116,12 @@ function App() {
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
+  
+  const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
+  
+  // Novo estado que entende se é Oferta ou Pedido
+  const [rideItemParaExcluir, setRideItemParaExcluir] = useState<{ id: number, type: 'Oferta' | 'Pedido', title: string } | null>(null);
+  
   const [publishForm, setPublishForm] = useState<PublishForm>({
     category: 'Vaga',
     title: '',
@@ -464,12 +470,61 @@ function App() {
       })
 
       setAppData(response.data)
-      await Swal.fire({
-        icon: status === 'Aprovado' ? 'success' : 'info',
-        title: `${status} publicacao`,
-        html: `<strong>${item.title}</strong><br />Autor: ${item.author}<br />Categoria: ${item.category}`,
-        confirmButtonText: 'Fechar',
-      })
+
+      if (status === 'Revisao') {
+        await Swal.fire({
+          title: 'Revisao de Publicacao',
+          width: 650,
+          customClass: {
+            popup: 'application-popup',
+            confirmButton: 'primary-button',
+          },
+          buttonsStyling: false,
+          html: `
+            <div style="text-align: left; margin-top: 10px;">
+              <span class="detail-tag">${item.category}</span>
+              <h2 style="margin: 12px 0 16px; color: #163a54; font-size: 24px;">${item.title}</h2>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Local ou Empresa</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.location}</strong>
+                </div>
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">E-mail de Contato</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.contactEmail}</strong>
+                </div>
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Autor (Aluno/Admin)</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.author}</strong>
+                </div>
+                <div style="background: #f7fafc; padding: 12px; border-radius: 12px;">
+                  <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 4px;">Enviado em</span>
+                  <strong style="color: #163a54; font-size: 14px;">${item.submittedAt}</strong>
+                </div>
+              </div>
+
+              <div style="background: #f7fafc; padding: 16px; border-radius: 14px; border: 1px solid #e3edf3;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Descricao da Publicacao</span>
+                <div style="color: #466579; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${item.description || 'Nenhuma descricao fornecida.'}</div>
+              </div>
+            </div>
+          `,
+          confirmButtonText: 'Fechar',
+        })
+      } else {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Publicacao aprovada!',
+          text: 'O item ja esta visivel no mural para os alunos.',
+          confirmButtonText: 'Ok',
+          customClass: {
+            confirmButton: 'primary-button',
+          },
+          buttonsStyling: false,
+        })
+      }
+
     } catch (error) {
       await Swal.fire({
         icon: 'error',
@@ -479,6 +534,49 @@ function App() {
       })
     }
   }
+
+  // === MODAIS DE EXCLUSÃO ===
+  
+  // 1. Excluir Publicações do Mural
+  const handleRequestDelete = (item: ModerationPost) => {
+    setItemParaExcluir(item);
+  };
+  
+  const handleConfirmDelete = async () => {
+    if (!itemParaExcluir || !sessionUser) return;
+
+    try {
+      await requestJson(`/api/publications/${itemParaExcluir.id}`, {
+        method: 'DELETE',
+      });
+      
+      setItemParaExcluir(null);
+      void refreshAppDataForUser(sessionUser); 
+      
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao excluir a publicacao.');
+    }
+  };
+
+  // 2. Excluir Caronas (Unificado: Ofertas e Pedidos)
+  const handleConfirmDeleteRideItem = async () => {
+    if (!rideItemParaExcluir || !sessionUser) return;
+
+    try {
+      if (rideItemParaExcluir.type === 'Oferta') {
+        await requestJson(`/api/rides/${rideItemParaExcluir.id}?userId=${sessionUser.id}`, { method: 'DELETE' });
+      } else {
+        await requestJson(`/api/ride-requests/${rideItemParaExcluir.id}?userId=${sessionUser.id}&role=${sessionUser.role}`, { method: 'DELETE' });
+      }
+      
+      setRideItemParaExcluir(null);
+      void refreshAppDataForUser(sessionUser); 
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao excluir o item da carona.');
+    }
+  };
 
   async function handleMarkLostItemRecovered(item: LostItem) {
     if (!sessionUser || sessionUser.role !== 'admin') return
@@ -752,7 +850,8 @@ function App() {
     try {
       const response = await requestJson<{ data: AppData }>('/api/lost-items', {
         method: 'POST',
-        body: JSON.stringify({ userId: sessionUser.id, ...lostItemForm }),
+     
+        body: JSON.stringify({ userId: sessionUser.id, role: sessionUser.role, ...lostItemForm }),
       })
 
       setAppData(response.data)
@@ -889,6 +988,19 @@ function App() {
           tone: 'info' as const,
         }
       : null,
+
+    ...appData.muralPosts
+      .filter((post) => {
+        const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
+        return post.author === sessionUser.name && post.status === 'Aprovado' && !lidas.includes(post.id)
+      })
+      .map((post) => ({
+        id: `mural-approved-${post.id}`,
+        title: 'Publicação Aprovada!',
+        detail: `O seu post "${post.title}" foi revisado e já está disponível no Mural Acadêmico.`,
+        tone: 'success' as const,
+      })),
+
   ].filter((item): item is { id: string; title: string; detail: string; tone: 'info' | 'warning' | 'success' } => Boolean(item))
 
   return (
@@ -919,7 +1031,17 @@ function App() {
           setIsProfileMenuOpen(false)
           setIsNotificationsOpen(false)
         }}
-        onToggleNotifications={() => {
+      onToggleNotifications={() => {
+          if (isNotificationsOpen) {
+            const aprovados = appData.muralPosts
+              .filter((post) => post.author === sessionUser.name && post.status === 'Aprovado')
+              .map((post) => post.id)
+            
+            const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
+            const novasLidas = Array.from(new Set([...lidas, ...aprovados]))
+            localStorage.setItem('notificacoesLidas', JSON.stringify(novasLidas))
+          }
+
           setIsNotificationsOpen((current) => !current)
           setIsProfileMenuOpen(false)
           setIsAccessibilityMenuOpen(false)
@@ -927,7 +1049,12 @@ function App() {
         onToggleAccessibilitySetting={handleToggleAccessibilitySetting}
         onLogout={() => void handleLogout()}
       >
-        {currentView === 'home' ? <HomeView dashboard={appData.dashboard} /> : null}
+        {currentView === 'home' ? (
+          <HomeView 
+            dashboard={appData.dashboard} 
+            onNavigate={(view) => setCurrentView(view)} 
+          />
+        ) : null}
         {currentView === 'rides' ? (
           <RidesView
             currentUserId={sessionUser.id}
@@ -1049,9 +1176,20 @@ function App() {
             reports={appData.reports}
             dashboard={appData.dashboard}
             lostItems={appData.lostItems}
+            rides={appData.rides ?? []}
+            rideRequests={appData.rideRequestsInbox ?? []}
             onRefresh={() => void refreshAppData()}
             onModerate={(status, item) => void handleModerationAction(status, item)}
             onMarkLostItemRecovered={(item) => void handleMarkLostItemRecovered(item)}
+            onDelete={(item) => void handleRequestDelete(item)}
+            onDeleteRideItem={(id, type, title) => setRideItemParaExcluir({ id, type, title })}
+            onOpenLostItemModal={() => {
+              setLostItemForm((current) => ({
+                ...current,
+                foundBy: current.foundBy || sessionUser.name,
+              }))
+              setIsLostItemModalOpen(true)
+            }}
           />
         ) : null}
         {currentView === 'database' ? (
@@ -1093,6 +1231,61 @@ function App() {
           onChange={setLostItemForm}
         />
       ) : null}
+
+      {/* NOSSO MODAL DE EXCLUSÃO DE PUBLICAÇÕES */}
+      {itemParaExcluir ? (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <div className="modal-icon-warning" style={{ fontSize: '50px', marginBottom: '15px' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 10px 0' }}>Excluir publicacao?</h3>
+            <p style={{ margin: '0 0 24px 0', color: '#4b5563' }}>
+              Voce esta prestes a remover permanentemente <strong>"{itemParaExcluir.title}"</strong> do mural. Esta acao nao pode ser desfeita.
+            </p>
+            
+            <div className="modal-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
+              <button 
+                type="button"
+                className="ghost-button" 
+                onClick={() => setItemParaExcluir(null)}
+                style={{ margin: 0 }}
+              >
+                Cancelar
+              </button>
+              <button 
+                type="button"
+                className="primary-button" 
+                style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0 }} 
+                onClick={() => void handleConfirmDelete()}
+              >
+                Excluir agora
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* NOSSO MODAL UNIFICADO DE CARONAS (OFERTAS E PEDIDOS) */}
+      {rideItemParaExcluir ? (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <div className="modal-icon-warning" style={{ fontSize: '50px', marginBottom: '15px' }}>⚠️</div>
+            <h3 style={{ margin: '0 0 10px 0' }}>Excluir {rideItemParaExcluir.type.toLowerCase()}?</h3>
+            <p style={{ margin: '0 0 24px 0', color: '#4b5563' }}>
+              Voce esta prestes a remover permanentemente a {rideItemParaExcluir.type.toLowerCase()} <strong>"{rideItemParaExcluir.title}"</strong>. Esta acao nao pode ser desfeita.
+            </p>
+            
+            <div className="modal-actions" style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center' }}>
+              <button type="button" className="ghost-button" onClick={() => setRideItemParaExcluir(null)} style={{ margin: 0 }}>
+                Cancelar
+              </button>
+              <button type="button" className="primary-button" style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0 }} onClick={() => void handleConfirmDeleteRideItem()}>
+                Excluir agora
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
     </>
   )
 }

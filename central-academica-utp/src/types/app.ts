@@ -35,6 +35,9 @@ export type ModerationPost = {
   author: string
   status: PostStatus
   submittedAt: string
+  description: string
+  contactEmail: string
+  location: string
 }
 
 export type RideOffer = {

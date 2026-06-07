@@ -85,15 +85,12 @@ export function MuralView({
         <div className="card-meta" aria-label="Informacoes do autor"><span>Autor: {post.author}</span><span>Status: {post.status}</span></div>
         {post.button ? (
           <div className="application-action-row">
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => onApply(post)}
-              disabled={applicationStatus === 'submitted'}
-            >
-              {applicationStatus === 'submitted' ? 'Interesse declarado' : 'Declarar interesse'}
-            </button>
             <span>{applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}</span>
+            {applicationStatus === 'available' ? (
+              <button className="primary-button" type="button" onClick={() => onApply(post)}>
+                {post.button}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {interest ? (
@@ -118,9 +115,9 @@ export function MuralView({
               : 'Vagas, eventos e comunicados oficiais aprovados pela moderacao.'}
           </p>
         </div>
-        <button className="secondary-button" type="button" onClick={onOpenPublishModal}>
-          Postar no Mural
-        </button>
+<button className="primary-button" type="button" onClick={onOpenPublishModal}>
+  Postar no Mural
+</button>
       </div>
       <div className="mural-filter-bar" aria-label="Filtros do mural">
         {categoryFilters.map((category) => (
@@ -161,15 +158,21 @@ export function MuralView({
             </section>
           ) : null}
         </div>
-        <aside className="side-panel">
-          <div className="study-card application-profile-card">
-            <div className="study-heading"><div className="study-title"><BriefcaseIcon /><h3>Meu interesse</h3></div></div>
-            <div className="application-profile-summary">
-              <div><span>Area</span><strong>{careerProfile.desiredArea || 'Completar perfil'}</strong></div>
-              <div><span>E-mail</span><strong>{careerProfile.contactEmail || 'Pendente'}</strong></div>
-              <div><span>Curriculo</span><strong>{careerProfile.resumeFileName || 'Pendente'}</strong></div>
+       <aside className="side-panel">
+          
+          {/* O CARD 'MEU INTERESSE' SÓ APARECE PARA O ALUNO */}
+          {userRole === 'student' ? (
+            <div className="study-card application-profile-card">
+              <div className="study-heading"><div className="study-title"><BriefcaseIcon /><h3>Meu interesse</h3></div></div>
+              <div className="application-profile-summary">
+                <div><span>Area</span><strong>{careerProfile.desiredArea || 'Completar perfil'}</strong></div>
+                <div><span>E-mail</span><strong>{careerProfile.contactEmail || 'Pendente'}</strong></div>
+                <div><span>Curriculo</span><strong>{careerProfile.resumeFileName || 'Pendente'}</strong></div>
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {/* O CARD DE PRAZOS CONTINUA APARECENDO PARA TODOS */}
           <div className="study-card">
             <div className="study-heading"><div className="study-title"><CalendarIcon /><h3>Prazos Importantes</h3></div></div>
             <div className="study-list">

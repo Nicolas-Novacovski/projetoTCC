@@ -108,6 +108,7 @@ function mapRide(row) {
     zone: row.zona_destino,
     title: row.titulo,
     driver: row.motorista,
+    driverName: row.motorista, // Adicionado para garantir que a tela de moderacao pegue o nome
     time: `Saida ${row.horario_saida}`,
     seats: row.vagas,
     meeting: row.ponto_encontro,
@@ -141,6 +142,9 @@ function mapModerationItem(row) {
     author: row.autor,
     status: row.status_moderacao,
     submittedAt: formatTimestamp(row.data_submissao),
+    description: row.descricao,
+    contactEmail: row.email_contato || 'secretaria@utp.br',
+    location: row.local_empresa || 'Nao informado',
   }
 }
 
@@ -560,6 +564,7 @@ export async function createPublication({ userId, role, category, title, locatio
 
 export async function createLostItem({
   userId,
+  role, // <-- Adicionado aqui
   title,
   place,
   date,
@@ -596,7 +601,8 @@ export async function createLostItem({
     detail: { title, category, place, status: lostItemOpenStatus },
   })
 
-  return getAppData(userId, 'student')
+  // 👇 Substituição feita aqui na última linha:
+  return getAppData(userId, role || 'student')
 }
 
 export async function createRide({
@@ -647,6 +653,38 @@ export async function createRide({
 
   return getAppData(userId, 'student')
 }
+
+// ==== NOVA FUNÇÃO: Deletar Carona ====
+export async function deleteRide(rideId, userId) {
+  const pool = await connectToDatabase()
+
+  // Opcional: Aqui poderiamos verificar se o userId é ADMIN ou DONO da carona
+  // Para simplificar, estamos assumindo que a chamada que chegou aqui já tem permissão.
+
+  const result = await pool.query(
+    `
+      delete from caronas
+      where id_carona = $1
+      returning id_carona
+    `,
+    [rideId],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Carona nao encontrada para exclusao.')
+  }
+
+  await recordAuditLog({
+    userId,
+    action: 'CARONA_EXCLUIDA',
+    entity: 'caronas',
+    entityId: rideId,
+    detail: { message: 'Carona deletada permanentemente pelo moderador/usuario' },
+  })
+
+  return result.rows[0]
+}
+// =====================================
 
 export async function createRideRequest({ zone, userId, whatsapp, pickupAddress, weekdays = [] }) {
   const pool = await connectToDatabase()
@@ -768,13 +806,13 @@ export async function updateRide({
     `
       update caronas
       set zona_destino = $3,
-          titulo = $4,
-          horario_saida = $5,
-          vagas = $6,
-          ponto_encontro = $7,
-          veiculo = $8,
-          whatsapp_motorista = $9,
-          dias_semana = $10
+        titulo = $4,
+        horario_saida = $5,
+        vagas = $6,
+        ponto_encontro = $7,
+        veiculo = $8,
+        whatsapp_motorista = $9,
+        dias_semana = $10
       where id_carona = $1
         and id_motorista = $2
       returning id_carona
@@ -836,9 +874,9 @@ export async function updateRideRequest({ requestId, userId, zone, whatsapp, pic
     `
       update pedidos_caronas
       set zona_destino = $3,
-          whatsapp_solicitante = $4,
-          endereco_embarque = $5,
-          dias_semana = $6
+        whatsapp_solicitante = $4,
+        endereco_embarque = $5,
+        dias_semana = $6
       where id_pedido = $1
         and id_solicitante = $2
       returning id_pedido
@@ -907,8 +945,8 @@ export async function updateRideRequestStatus(requestId, userId, status) {
     `
       update pedidos_caronas
       set status_pedido = $2,
-          id_usuario_aceitou = $3,
-          motorista_aceitou_whatsapp = $4
+        id_usuario_aceitou = $3,
+        motorista_aceitou_whatsapp = $4
       where id_pedido = $1
       returning id_pedido
     `,
@@ -926,17 +964,17 @@ export async function updateRideRequestStatus(requestId, userId, status) {
   return getAppData(userId, 'student')
 }
 
-export async function deleteRideRequest(requestId, userId) {
+export async function deleteRideRequest(requestId, userId, role = 'student') {
   const pool = await connectToDatabase()
 
   const result = await pool.query(
     `
       delete from pedidos_caronas
       where id_pedido = $1
-        and id_solicitante = $2
+        and ($2 = 'admin' or id_solicitante = $3)
       returning id_pedido
     `,
-    [requestId, userId],
+    [requestId, role, userId],
   )
 
   if (!result.rowCount) {
@@ -951,7 +989,8 @@ export async function deleteRideRequest(requestId, userId) {
     detail: {},
   })
 
-  return getAppData(userId, 'student')
+  // Retorna os dados corretos dependendo de quem excluiu
+  return getAppData(userId, role === 'admin' ? 'admin' : 'student')
 }
 
 export async function markLostItemRecovered(itemId, userId, role) {
@@ -1011,6 +1050,25 @@ export async function updatePublicationStatus(publicationId, status, userId, rol
   })
 
   return getAppData(userId, role)
+}
+
+export async function deletePublication(publicationId) {
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      delete from publicacoes_mural
+      where id_publicacao = $1
+      returning id_publicacao
+    `,
+    [publicationId],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Publicacao nao encontrada para exclusao.')
+  }
+
+  return result.rows[0]
 }
 
 export async function saveCareerProfile(userId, profile) {

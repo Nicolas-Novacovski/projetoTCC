@@ -106,9 +106,7 @@ export function CareerView({
           <h2>Perfil Profissional</h2>
           <p>Cadastre seu curriculo e defina preferencias para receber vagas mais alinhadas.</p>
         </div>
-        <button className="secondary-button" type="button" onClick={onSave} disabled={isSaving}>
-          {isSaving ? 'Salvando...' : 'Salvar preferencias'}
-        </button>
+        {/* O botão foi retirado daqui! */}
       </div>
       <section className="career-overview" aria-label="Resumo do perfil profissional">
         <div className="career-progress-panel career-hero-panel">
@@ -163,6 +161,14 @@ export function CareerView({
             </label>
             <label className="form-field"><span>E-mail para receber vagas</span><input type="email" value={careerProfile.contactEmail} onChange={(event) => onCareerChange((current) => ({ ...current, contactEmail: event.target.value }))} /></label>
           </div>
+          
+          {/* O BOTÃO VEIO PARA CÁ! */}
+          <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="primary-button" type="button" onClick={onSave} disabled={isSaving}>
+              {isSaving ? 'Salvando...' : 'Salvar preferencias'}
+            </button>
+          </div>
+
         </section>
         <section className="career-card career-form-card career-resume-card">
           <div className="career-card-header">
