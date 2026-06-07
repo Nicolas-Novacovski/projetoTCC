@@ -50,12 +50,23 @@ export async function sendApplicationEmail({ to, studentName, post, profile, con
     'Importante: a Central Academica nao realiza sua inscricao na vaga e nao se responsabiliza pelo processo seletivo. Nos apenas encaminhamos as informacoes para voce. Entre em contato com a empresa, envie seu curriculo quando necessario e acompanhe todas as etapas diretamente com o responsavel pela oportunidade.',
   ].join('\n')
 
+  const attachments = profile.resumeFileContent
+    ? [
+        {
+          filename: profile.resumeFileName || 'curriculo',
+          content: Buffer.from(profile.resumeFileContent, 'base64'),
+          contentType: profile.resumeFileMimeType || undefined,
+        },
+      ]
+    : []
+
   try {
     await transporter.sendMail({
       from: env.mail.from,
       to,
       subject,
       text,
+      attachments,
     })
 
     return { sent: true, reason: null }

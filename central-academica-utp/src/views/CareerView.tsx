@@ -1,6 +1,7 @@
 import type { CareerProfile, CareerProfileSetter } from '../types/app'
 
 type CareerViewProps = {
+  userId: number
   careerProfile: CareerProfile
   isSaving: boolean
   onCareerChange: CareerProfileSetter
@@ -36,6 +37,7 @@ const desiredAreaOptions = [
 ]
 
 export function CareerView({
+  userId,
   careerProfile,
   isSaving,
   onCareerChange,
@@ -51,6 +53,9 @@ export function CareerView({
   const completedRequiredFields = requiredFields.filter((value) => String(value ?? '').trim()).length
   const isReadyForInterests = completedRequiredFields === requiredFields.length
   const readinessLabel = isReadyForInterests ? 'Pronto para declarar interesse' : 'Perfil em preparacao'
+  const resumeSizeLabel = careerProfile.resumeFileSize
+    ? `${(careerProfile.resumeFileSize / 1024 / 1024).toFixed(2)} MB`
+    : 'Tamanho nao informado'
   const requirementItems = [
     { label: 'Curso', done: Boolean(careerProfile.course.trim()) },
     { label: 'Semestre', done: Boolean(careerProfile.semester.trim()) },
@@ -58,6 +63,41 @@ export function CareerView({
     { label: 'E-mail', done: Boolean(careerProfile.contactEmail.trim()) },
     { label: 'Area desejada', done: Boolean(careerProfile.desiredArea.trim()) },
   ]
+
+  function handleResumeFileChange(file: File | undefined) {
+    if (!file) return
+
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]
+
+    if (!allowedTypes.includes(file.type)) {
+      window.alert('Selecione um arquivo PDF, DOC ou DOCX.')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      window.alert('O curriculo deve ter no maximo 5 MB.')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = String(reader.result || '')
+      const [, content = ''] = result.split(',')
+
+      onCareerChange((current) => ({
+        ...current,
+        resumeFileName: file.name,
+        resumeFileContent: content,
+        resumeFileMimeType: file.type,
+        resumeFileSize: file.size,
+      }))
+    }
+    reader.readAsDataURL(file)
+  }
 
   return (
     <section className="page-section career-section">
@@ -132,18 +172,21 @@ export function CareerView({
           <div className="resume-upload-card">
             <span className="detail-label">Arquivo atual</span>
             <strong>{careerProfile.resumeFileName || 'Nenhum curriculo informado'}</strong>
+            {careerProfile.resumeFileName ? <span className="resume-file-meta">{resumeSizeLabel}</span> : null}
+            {careerProfile.resumeFileName ? (
+              <a className="resume-download-link" href={`/api/career-profile/${userId}/resume`}>
+                Baixar curriculo salvo
+              </a>
+            ) : null}
             <label className="ghost-upload-button">
               Selecionar curriculo
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) onCareerChange((current) => ({ ...current, resumeFileName: file.name }))
-                }}
+                onChange={(event) => handleResumeFileChange(event.target.files?.[0])}
               />
             </label>
-            <p className="resume-upload-hint">Aceitamos PDF, DOC ou DOCX.</p>
+            <p className="resume-upload-hint">Aceitamos PDF, DOC ou DOCX ate 5 MB. O arquivo fica salvo no banco e pode ser anexado ao e-mail.</p>
           </div>
         </section>
       </div>

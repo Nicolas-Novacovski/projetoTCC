@@ -10,6 +10,7 @@ import {
   deleteRideRequest,
   getAdminDatabaseSnapshot,
   getAppData,
+  getCareerResumeFile,
   loginAdmin,
   loginStudent,
   markLostItemRecovered,
@@ -433,4 +434,20 @@ router.put('/career-profile/:userId', async (request, response) => {
     status: 'ok',
     data,
   })
+})
+
+router.get('/career-profile/:userId/resume', async (request, response) => {
+  const userId = Number(request.params.userId)
+  const resume = await getCareerResumeFile(userId)
+
+  if (!resume) {
+    return response.status(404).json({
+      status: 'error',
+      message: 'Curriculo nao encontrado.',
+    })
+  }
+
+  response.setHeader('Content-Type', resume.mimeType)
+  response.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(resume.fileName)}"`)
+  return response.send(resume.buffer)
 })

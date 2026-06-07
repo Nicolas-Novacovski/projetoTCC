@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { BriefcaseIcon, CalendarIcon, ClockIcon } from '../components/icons'
-import type { ApplicationStatus, CareerProfile, Deadline, MuralPost, UserRole } from '../types/app'
+import type { ApplicationStatus, CareerProfile, Deadline, JobInterest, MuralPost, UserRole } from '../types/app'
 
 type MuralViewProps = {
   userRole: UserRole
@@ -8,6 +8,7 @@ type MuralViewProps = {
   importantDeadlines: Deadline[]
   careerProfile: CareerProfile
   appliedPostIds: number[]
+  jobInterests: JobInterest[]
   onApply: (post: MuralPost) => void
   onOpenPublishModal: () => void
 }
@@ -18,6 +19,7 @@ export function MuralView({
   importantDeadlines,
   careerProfile,
   appliedPostIds,
+  jobInterests,
   onApply,
   onOpenPublishModal,
 }: MuralViewProps) {
@@ -64,6 +66,7 @@ export function MuralView({
 
   function renderPost(post: MuralPost) {
     const applicationStatus = getApplicationStatus(post)
+    const interest = jobInterests.find((item) => item.postId === post.id)
 
     return (
       <article key={post.id} className={`mural-card${applicationStatus === 'submitted' ? ' application-sent-card' : ''}`}>
@@ -91,6 +94,13 @@ export function MuralView({
               {applicationStatus === 'submitted' ? 'Interesse declarado' : 'Declarar interesse'}
             </button>
             <span>{applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}</span>
+          </div>
+        ) : null}
+        {interest ? (
+          <div className="interest-history-strip">
+            <span>Status do e-mail: <strong>{interest.emailStatus}</strong></span>
+            <span>Declarado em: <strong>{interest.createdAt}</strong></span>
+            <span>Contato: <strong>{interest.contactEmail}</strong></span>
           </div>
         ) : null}
       </article>

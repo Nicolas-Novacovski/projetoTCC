@@ -108,6 +108,9 @@ async function ensureDatabaseSchema(pool) {
       curso varchar(120) not null,
       semestre varchar(40) not null,
       arquivo_curriculo varchar(255),
+      curriculo_conteudo text,
+      curriculo_mime varchar(120),
+      curriculo_tamanho integer,
       area_desejada varchar(120),
       pretensao_salarial varchar(80),
       modelo_trabalho varchar(40),
@@ -154,6 +157,9 @@ async function ensureDatabaseSchema(pool) {
   await pool.query(`alter table usuarios add column if not exists data_criacao timestamp without time zone not null default now()`)
   await pool.query(`alter table publicacoes_mural add column if not exists email_contato varchar(160)`)
   await pool.query(`alter table perfis_profissionais add column if not exists email_contato varchar(160)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists curriculo_conteudo text`)
+  await pool.query(`alter table perfis_profissionais add column if not exists curriculo_mime varchar(120)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists curriculo_tamanho integer`)
   await pool.query(`alter table candidaturas_vagas add column if not exists data_criacao timestamp without time zone not null default now()`)
   await pool.query(`alter table candidaturas_vagas add column if not exists status_email varchar(40) not null default 'Pendente'`)
   await pool.query(`alter table solicitacoes_caronas add column if not exists data_criacao timestamp without time zone not null default now()`)

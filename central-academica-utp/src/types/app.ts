@@ -13,6 +13,11 @@ export type DashboardStats = {
   muralCount: number
   pendingModerationCount: number
   reportsCount: number
+  approvedPublicationsCount: number
+  jobInterestsCount: number
+  sentEmailsCount: number
+  recoveredLostItemsCount: number
+  closedRidesCount: number
 }
 
 export type Deadline = {
@@ -90,6 +95,9 @@ export type CareerProfile = {
   course: string
   semester: string
   resumeFileName: string
+  resumeFileContent: string
+  resumeFileMimeType: string
+  resumeFileSize: number
   contactEmail: string
   desiredArea: string
   salaryExpectation: string
@@ -113,6 +121,13 @@ export type MuralPost = {
 }
 
 export type ApplicationStatus = 'available' | 'submitted'
+
+export type JobInterest = {
+  postId: number
+  emailStatus: string
+  contactEmail: string
+  createdAt: string
+}
 
 export type Report = { id: number; title: string; detail: string; status: string; createdAt: string }
 
@@ -151,6 +166,7 @@ export type AppData = {
   lostItems: LostItem[]
   muralPosts: MuralPost[]
   appliedPostIds: number[]
+  jobInterests: JobInterest[]
   moderationQueue: ModerationPost[]
   reports: Report[]
   rideRequestsInbox: RideRequest[]

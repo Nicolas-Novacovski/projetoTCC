@@ -21,8 +21,6 @@ export function ModerationView({
   onModerate,
   onMarkLostItemRecovered,
 }: ModerationViewProps) {
-  const approvedCount = moderationQueue.filter((item) => item.status === 'Aprovado').length
-
   return (
     <section className="page-section moderation-section">
       <div className="page-heading">
@@ -32,7 +30,11 @@ export function ModerationView({
       <div className="moderation-overview">
         <article className="overview-card"><span>Em analise</span><strong>{dashboard.pendingModerationCount}</strong><p>Publicacoes aguardando revisao manual.</p></article>
         <article className="overview-card"><span>Denuncias</span><strong>{dashboard.reportsCount}</strong><p>Ocorrencias abertas que precisam de resposta.</p></article>
-        <article className="overview-card"><span>Aprovadas</span><strong>{approvedCount}</strong><p>Itens liberados e visiveis no mural.</p></article>
+        <article className="overview-card"><span>Aprovadas</span><strong>{dashboard.approvedPublicationsCount}</strong><p>Itens liberados e visiveis no mural.</p></article>
+        <article className="overview-card"><span>Interesses</span><strong>{dashboard.jobInterestsCount}</strong><p>Alunos que declararam interesse em vagas.</p></article>
+        <article className="overview-card"><span>E-mails enviados</span><strong>{dashboard.sentEmailsCount}</strong><p>Mensagens de vagas encaminhadas com sucesso.</p></article>
+        <article className="overview-card"><span>Itens recuperados</span><strong>{dashboard.recoveredLostItemsCount}</strong><p>Achados e perdidos retirados pelos donos.</p></article>
+        <article className="overview-card"><span>Caronas encerradas</span><strong>{dashboard.closedRidesCount}</strong><p>Rotas lotadas ou encerradas por motoristas.</p></article>
       </div>
       <div className="moderation-grid">
         <section className="moderation-card moderation-table-card">

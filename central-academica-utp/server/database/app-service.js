@@ -191,6 +191,9 @@ function mapCareerProfile(row) {
       course: '',
       semester: '',
       resumeFileName: '',
+      resumeFileContent: '',
+      resumeFileMimeType: '',
+      resumeFileSize: 0,
       contactEmail: '',
       desiredArea: '',
       salaryExpectation: '',
@@ -202,12 +205,15 @@ function mapCareerProfile(row) {
   return {
     course: row.curso,
     semester: row.semestre,
-    resumeFileName: row.arquivo_curriculo,
+    resumeFileName: row.arquivo_curriculo || '',
+    resumeFileContent: row.curriculo_conteudo || '',
+    resumeFileMimeType: row.curriculo_mime || '',
+    resumeFileSize: Number(row.curriculo_tamanho || 0),
     contactEmail: row.email_contato || '',
-    desiredArea: row.area_desejada,
-    salaryExpectation: row.pretensao_salarial,
-    workModel: row.modelo_trabalho,
-    preferredCity: row.cidade_preferencia,
+    desiredArea: row.area_desejada || '',
+    salaryExpectation: row.pretensao_salarial || '',
+    workModel: row.modelo_trabalho || 'Nao informado',
+    preferredCity: row.cidade_preferencia || '',
   }
 }
 
@@ -378,7 +384,7 @@ export async function getAppData(userId, role) {
     throw new Error('Usuario nao encontrado.')
   }
 
-  const [ridesResult, lostItemsResult, publicationsResult, profileResult, rideRequestsResult, rideInterestsResult, applicationsResult, reportsResult] =
+  const [ridesResult, lostItemsResult, publicationsResult, profileResult, rideRequestsResult, rideInterestsResult, applicationsResult, adminMetricsResult, reportsResult] =
     await Promise.all([
       pool.query(
         `
@@ -434,12 +440,30 @@ export async function getAppData(userId, role) {
       getVisibleRideInterests(pool, userId),
       pool.query(
         `
-          select distinct id_publicacao
+          select distinct on (id_publicacao)
+            id_publicacao,
+            email_contato_vaga,
+            status_email,
+            data_criacao
           from candidaturas_vagas
           where id_usuario = $1
+          order by id_publicacao, data_criacao desc
         `,
         [userId],
       ),
+      isAdmin
+        ? pool.query(
+            `
+              select
+                (select count(*) from candidaturas_vagas) as total_interesses,
+                (select count(*) from candidaturas_vagas where status_email = 'Enviado') as emails_enviados,
+                (select count(*) from publicacoes_mural where status_moderacao = 'Aprovado') as publicacoes_aprovadas,
+                (select count(*) from achados_perdidos where status_item = $1) as itens_recuperados,
+                (select count(*) from caronas where status_carona <> 'Ativa') as caronas_encerradas
+            `,
+            [lostItemRecoveredStatus],
+          )
+        : Promise.resolve({ rows: [{}] }),
       isAdmin
         ? pool.query(
             `
@@ -460,6 +484,13 @@ export async function getAppData(userId, role) {
   const rideRequestsInbox = rideRequestsResult.rows.map(mapRideRequest)
   const rideInterestsInbox = rideInterestsResult.rows.map(mapRideInterest)
   const appliedPostIds = applicationsResult.rows.map((row) => Number(row.id_publicacao)).filter(Boolean)
+  const jobInterests = applicationsResult.rows.map((row) => ({
+    postId: Number(row.id_publicacao),
+    emailStatus: row.status_email,
+    contactEmail: row.email_contato_vaga,
+    createdAt: formatTimestamp(row.data_criacao),
+  }))
+  const adminMetrics = adminMetricsResult.rows[0] ?? {}
 
   return {
     user: {
@@ -473,12 +504,18 @@ export async function getAppData(userId, role) {
       muralCount: muralPosts.length,
       pendingModerationCount: moderationQueue.filter((item) => item.status !== 'Aprovado').length,
       reportsCount: reports.filter((item) => item.status !== 'Resolvida').length,
+      approvedPublicationsCount: Number(adminMetrics.publicacoes_aprovadas || muralPosts.filter((item) => item.status === 'Aprovado').length),
+      jobInterestsCount: Number(adminMetrics.total_interesses || appliedPostIds.length),
+      sentEmailsCount: Number(adminMetrics.emails_enviados || 0),
+      recoveredLostItemsCount: Number(adminMetrics.itens_recuperados || 0),
+      closedRidesCount: Number(adminMetrics.caronas_encerradas || rides.filter((ride) => ride.status !== 'Ativa').length),
     },
     rides,
     rideHotspots: buildHotspots(rides),
     lostItems,
     muralPosts,
     appliedPostIds,
+    jobInterests,
     moderationQueue,
     reports,
     rideRequestsInbox,
@@ -1000,7 +1037,10 @@ export async function saveCareerProfile(userId, profile) {
             area_desejada = $6,
             pretensao_salarial = $7,
             modelo_trabalho = $8,
-            cidade_preferencia = $9
+            cidade_preferencia = $9,
+            curriculo_conteudo = coalesce($10, curriculo_conteudo),
+            curriculo_mime = coalesce($11, curriculo_mime),
+            curriculo_tamanho = coalesce($12, curriculo_tamanho)
         where id_perfil = $1
       `,
       [
@@ -1013,6 +1053,9 @@ export async function saveCareerProfile(userId, profile) {
         null,
         'Nao informado',
         null,
+        profile.resumeFileContent || null,
+        profile.resumeFileMimeType || null,
+        Number(profile.resumeFileSize || 0) || null,
       ],
     )
 
@@ -1035,9 +1078,12 @@ export async function saveCareerProfile(userId, profile) {
           area_desejada,
           pretensao_salarial,
           modelo_trabalho,
-          cidade_preferencia
+          cidade_preferencia,
+          curriculo_conteudo,
+          curriculo_mime,
+          curriculo_tamanho
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         returning id_perfil
       `,
       [
@@ -1050,6 +1096,9 @@ export async function saveCareerProfile(userId, profile) {
         null,
         'Nao informado',
         null,
+        profile.resumeFileContent || null,
+        profile.resumeFileMimeType || null,
+        Number(profile.resumeFileSize || 0) || null,
       ],
     )
 
@@ -1063,6 +1112,32 @@ export async function saveCareerProfile(userId, profile) {
   }
 
   return getAppData(userId, 'student')
+}
+
+export async function getCareerResumeFile(userId) {
+  const pool = await connectToDatabase()
+  const result = await pool.query(
+    `
+      select arquivo_curriculo, curriculo_conteudo, curriculo_mime
+      from perfis_profissionais
+      where id_usuario = $1
+      order by id_perfil desc
+      limit 1
+    `,
+    [userId],
+  )
+
+  const row = result.rows[0]
+
+  if (!row?.curriculo_conteudo) {
+    return null
+  }
+
+  return {
+    fileName: row.arquivo_curriculo || 'curriculo',
+    mimeType: row.curriculo_mime || 'application/octet-stream',
+    buffer: Buffer.from(row.curriculo_conteudo, 'base64'),
+  }
 }
 
 export async function createJobApplication({ userId, publicationId, studentName }) {
@@ -1235,7 +1310,7 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
-        select id_perfil, id_usuario, curso, semestre, arquivo_curriculo, email_contato, area_desejada, modelo_trabalho, cidade_preferencia
+        select id_perfil, id_usuario, curso, semestre, arquivo_curriculo, curriculo_mime, curriculo_tamanho, email_contato, area_desejada, modelo_trabalho, cidade_preferencia
         from perfis_profissionais
         order by id_perfil desc
       `,

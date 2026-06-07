@@ -81,6 +81,16 @@ function removeRideRequestFromAppData(data: AppData, requestId: number): AppData
   }
 }
 
+function stripResumeContentFromAppData(data: AppData): AppData {
+  return {
+    ...data,
+    careerProfile: {
+      ...data.careerProfile,
+      resumeFileContent: '',
+    },
+  }
+}
+
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [currentView, setCurrentView] = useState<PageView>('mural')
@@ -182,7 +192,11 @@ function App() {
     if (storedAppData) {
       try {
         const parsedData = JSON.parse(storedAppData) as AppData
-        setAppData(parsedData)
+        setAppData({
+          ...parsedData,
+          appliedPostIds: parsedData.appliedPostIds ?? [],
+          jobInterests: parsedData.jobInterests ?? [],
+        })
         setCareerProfile(parsedData.careerProfile)
         setAppliedPostIds(parsedData.appliedPostIds ?? [])
       } catch {
@@ -258,7 +272,7 @@ function App() {
       return
     }
 
-    window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(appData))
+    window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(stripResumeContentFromAppData(appData)))
   }, [appData, sessionUser])
 
   useEffect(() => {
@@ -595,6 +609,7 @@ function App() {
       })
 
       setAppliedPostIds((current) => (current.includes(post.id) ? current : [...current, post.id]))
+      void refreshAppData()
 
       await Swal.fire({
         icon: response.application.emailSent ? 'success' : 'info',
@@ -1009,6 +1024,7 @@ function App() {
         ) : null}
         {currentView === 'career' ? (
           <CareerView
+            userId={sessionUser.id}
             careerProfile={careerProfile}
             isSaving={isSavingProfile}
             onCareerChange={setCareerProfile}
@@ -1022,6 +1038,7 @@ function App() {
             importantDeadlines={appData.importantDeadlines}
             careerProfile={careerProfile}
             appliedPostIds={appliedPostIds}
+            jobInterests={appData.jobInterests}
             onApply={(post) => void handleApply(post)}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
           />
