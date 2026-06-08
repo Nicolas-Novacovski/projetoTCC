@@ -11,7 +11,7 @@ type MuralViewProps = {
   jobInterests: JobInterest[]
   onApply: (post: MuralPost) => void
   onOpenPublishModal: () => void
-  onOpenReportModal: () => void // <-- Propriedade necessária
+  onOpenReportModal: () => void
 }
 
 export function MuralView({
@@ -23,7 +23,7 @@ export function MuralView({
   jobInterests = [],
   onApply,
   onOpenPublishModal,
-  onOpenReportModal, // <-- Recebendo a função
+  onOpenReportModal,
 }: MuralViewProps) {
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('Todos')
@@ -104,29 +104,38 @@ export function MuralView({
 
   return (
     <section className="page-section mural-section">
-      <div className="page-heading">
+      <div className="page-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Mural Academico</h2>
-          <p>Vagas, eventos e comunicados oficiais aprovados pela moderacao.</p>
+          <p>
+            {userRole === 'admin'
+              ? 'Acompanhe o que esta publicado e navegue ate a moderacao quando precisar revisar conteudos.'
+              : 'Vagas, eventos e comunicados oficiais aprovados pela moderacao.'}
+          </p>
         </div>
         
-        {/* BOTÕES NO TOPO LADO A LADO */}
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', height: 'fit-content' }}>
+          {/* Botão de Denunciar agora vermelho e sólido */}
           <button 
             className="primary-button" 
             type="button" 
-            style={{ backgroundColor: '#dc2626', color: 'white', border: 'none' }} 
+            style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0, height: 'fit-content' }} 
             onClick={onOpenReportModal}
           >
             Registrar Denuncia
           </button>
-          <button className="primary-button" type="button" onClick={onOpenPublishModal}>
+          <button 
+            className="primary-button" 
+            type="button" 
+            style={{ margin: 0, height: 'fit-content' }} 
+            onClick={onOpenPublishModal}
+          >
             Postar no Mural
           </button>
         </div>
       </div>
 
-      <div className="mural-filter-bar">
+      <div className="mural-filter-bar" aria-label="Filtros do mural">
         {categoryFilters.map((category) => (
           <button
             key={category}
@@ -141,34 +150,46 @@ export function MuralView({
 
       <div className="mural-content-grid">
         <div className="mural-list">
-          <section className="mural-post-group">
+          <section className="mural-post-group" aria-label="Publicacoes disponiveis">
             <div className="mural-group-heading">
-              <div><h3>Disponiveis no mural</h3></div>
+              <div>
+                <h3>Disponiveis no mural</h3>
+                <p>{selectedCategory === 'Todos' ? 'Publicacoes que ainda nao foram movidas para seus interesses.' : `Filtro ativo: ${selectedCategory}.`}</p>
+              </div>
               <span>{availablePosts.length} item(ns)</span>
             </div>
             {availablePosts.map(renderPost)}
+            {availablePosts.length === 0 ? <article className="mural-card"><h3>Nenhuma publicacao disponivel</h3><p className="card-description">Tente outro filtro ou veja os interesses ja declarados abaixo.</p></article> : null}
           </section>
           
-          {interestedPosts.length > 0 && (
-            <section className="mural-post-group mural-interested-group">
-              <div className="mural-group-heading"><div><h3>Interesses declarados</h3></div></div>
+          {interestedPosts.length > 0 ? (
+            <section className="mural-post-group mural-interested-group" aria-label="Vagas com interesse declarado">
+              <div className="mural-group-heading">
+                <div>
+                  <h3>Interesses declarados</h3>
+                  <p>Vagas que ja tiveram as informacoes encaminhadas para seu e-mail.</p>
+                </div>
+                <span>{interestedPosts.length} vaga(s)</span>
+              </div>
               {interestedPosts.map(renderPost)}
             </section>
-          )}
+          ) : null}
         </div>
 
         <aside className="side-panel">
-          {userRole === 'student' && (
+          {userRole === 'student' ? (
             <div className="study-card application-profile-card">
-              <div className="study-heading"><h3>Meu interesse</h3></div>
+              <div className="study-heading"><div className="study-title"><BriefcaseIcon /><h3>Meu interesse</h3></div></div>
               <div className="application-profile-summary">
-                <div><span>Area</span><strong>{careerProfile.desiredArea || 'Pendente'}</strong></div>
+                <div><span>Area</span><strong>{careerProfile.desiredArea || 'Completar perfil'}</strong></div>
+                <div><span>E-mail</span><strong>{careerProfile.contactEmail || 'Pendente'}</strong></div>
                 <div><span>Curriculo</span><strong>{careerProfile.resumeFileName || 'Pendente'}</strong></div>
               </div>
             </div>
-          )}
+          ) : null}
+
           <div className="study-card">
-            <div className="study-heading"><h3>Prazos Importantes</h3></div>
+            <div className="study-heading"><div className="study-title"><CalendarIcon /><h3>Prazos Importantes</h3></div></div>
             <div className="study-list">
               {importantDeadlines.map((item) => (
                 <div key={item.title} className="study-item">
@@ -180,7 +201,35 @@ export function MuralView({
           </div>
         </aside>
       </div>
-      {/* ... (resto do modal de deadlines continua igual) ... */}
+
+      {selectedDeadline ? (
+        <div className="details-modal-backdrop" onClick={() => setSelectedDeadline(null)}>
+          <div className="details-modal deadline-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="details-modal-header">
+              <div>
+                <span className="detail-tag">Prazo importante</span>
+                <h3>{selectedDeadline.title}</h3>
+                <p>{selectedDeadline.detail}</p>
+              </div>
+              <button className="ghost-button" type="button" onClick={() => setSelectedDeadline(null)}>Fechar</button>
+            </div>
+            <div className="deadline-detail-grid">
+              <div><span className="detail-label">O que significa</span><strong>{selectedDeadline.description}</strong></div>
+              <div><span className="detail-label">Proximo passo</span><strong>{selectedDeadline.action}</strong></div>
+              <div><span className="detail-label">Onde resolver</span><strong>{selectedDeadline.channel}</strong></div>
+            </div>
+            <div className="details-modal-footer deadline-modal-footer">
+              <div>
+                <span className="detail-label">Dica</span>
+                <strong>Organize os documentos antes do prazo para evitar retrabalho na secretaria.</strong>
+              </div>
+              <button className="primary-button" type="button" onClick={() => setSelectedDeadline(null)}>
+                Marcar como visto
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

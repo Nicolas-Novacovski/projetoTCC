@@ -58,10 +58,200 @@ export function ModerationView({
     })),
   ]
 
+  async function handleConsultarItem(item: LostItem) {
+    await Swal.fire({
+      title: 'Detalhes do Item Perdido',
+      width: 650,
+      customClass: { popup: 'application-popup', confirmButton: 'primary-button' },
+      buttonsStyling: false,
+      html: `
+        <div style="text-align: left;">
+          <span class="detail-tag" style="margin-bottom: 8px; display: inline-block;">${item.category}</span>
+          <h2 style="margin: 0 0 20px 0; color: #163a54; font-size: 24px;">${item.title}</h2>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Local Encontrado</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.place}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Data do Registro</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.date}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Quem Encontrou</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.foundBy || 'Não informado'}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Contato / Detalhes</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${item.contact || 'Ver na recepção'}</strong>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e3edf3;">
+            <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Descrição do Objeto</span>
+            <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.6; white-space: pre-wrap;">${item.description || 'Nenhuma descrição detalhada.'}</p>
+          </div>
+          
+          <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+            <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Status Atual</span>
+            <strong style="color: #15803d; font-size: 14px; display: block; margin-top: 4px;">${item.status || 'Aguardando Retirada'}</strong>
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Fechar',
+    })
+  }
+
+  async function handleReviewRide(item: any) {
+    if (item.type === 'Oferta') {
+      const ride = item.raw;
+      await Swal.fire({
+        title: 'Detalhes Completo da Oferta',
+        width: 700,
+        customClass: { popup: 'application-popup', confirmButton: 'primary-button' },
+        buttonsStyling: false,
+        html: `
+          <div style="text-align: left;">
+            <span class="detail-tag" style="margin-bottom: 8px; display: inline-block; background: #e0f2fe; color: #0369a1;">OFERTA DE CARONA</span>
+            <h2 style="margin: 0 0 20px 0; color: #163a54; font-size: 24px;">${ride.title}</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Motorista</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.driver || 'Não informado'}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Região / Destino</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.zone}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Veículo</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.vehicle || 'Não informado'}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Vagas Disponíveis</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.seats}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Horário de Saída</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.time}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">WhatsApp</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.whatsapp}</strong>
+              </div>
+            </div>
+
+            <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e3edf3;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Ponto de Encontro</span>
+              <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.5;">${ride.meeting}</p>
+            </div>
+
+            <div style="background: #f7fafc; padding: 16px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Dias de Circulação</span>
+              <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.5;">${ride.weekdays || 'Não informado'}</p>
+            </div>
+          </div>
+        `,
+        confirmButtonText: 'Fechar',
+      })
+    } else {
+      const req = item.raw;
+      await Swal.fire({
+        title: 'Detalhes Completo do Pedido de Carona',
+        width: 700,
+        customClass: { popup: 'application-popup', confirmButton: 'primary-button' },
+        buttonsStyling: false,
+        html: `
+          <div style="text-align: left;">
+            <span class="detail-tag" style="margin-bottom: 8px; display: inline-block; background: #fef3c7; color: #b45309;">PEDIDO DE CARONA</span>
+            <h2 style="margin: 0 0 20px 0; color: #163a54; font-size: 24px;">Destino: ${req.zone}</h2>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Solicitante</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${req.requesterName || 'Aluno'}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">WhatsApp do Passageiro</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${req.requesterWhatsapp}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Data de Solicitação</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${req.createdAt || 'Não informada'}</strong>
+              </div>
+              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Status do Pedido</span>
+                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${req.status}</strong>
+              </div>
+            </div>
+
+            <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #e3edf3;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Endereço de Embarque</span>
+              <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.5;">${req.pickupAddress}</p>
+            </div>
+
+            <div style="background: #f7fafc; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Dias Necessários</span>
+              <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.5;">${req.weekdays || 'Não informado'}</p>
+            </div>
+            
+            ${req.notes ? `
+            <div style="background: #f7fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Observações Complementares</span>
+              <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.5;">${req.notes}</p>
+            </div>
+            ` : ''}
+          </div>
+        `,
+        confirmButtonText: 'Fechar',
+      })
+    }
+  }
+
+  async function handleReviewReport(report: Report) {
+const isClosed = String(report.status) === 'Resolvida' || String(report.status) === 'Encerrada';
+    const statusColor = isClosed ? '#15803d' : '#b45309';
+    const statusBg = isClosed ? '#dcfce7' : '#fef3c7';
+    const statusText = isClosed ? 'Encerrada' : 'Em Análise';
+
+    await Swal.fire({
+      title: 'Detalhes da Denúncia',
+      width: 650,
+      customClass: { popup: 'application-popup', confirmButton: 'primary-button' },
+      buttonsStyling: false,
+      html: `
+        <div style="text-align: left;">
+          <span class="detail-tag" style="margin-bottom: 8px; display: inline-block; background: ${statusBg}; color: ${statusColor};">
+            ${statusText}
+          </span>
+          <h2 style="margin: 0 0 20px 0; color: #163a54; font-size: 24px;">${report.title}</h2>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+             <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Data de Registro</span>
+              <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${report.createdAt || 'Não informada'}</strong>
+            </div>
+            <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
+              <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Status</span>
+              <strong style="color: ${statusColor}; font-size: 14px; display: block; margin-top: 4px;">${statusText}</strong>
+            </div>
+          </div>
+
+          <div style="background: #f7fafc; padding: 16px; border-radius: 8px; border: 1px solid #e3edf3;">
+            <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase; margin-bottom: 8px;">Detalhes e Evidências</span>
+            <p style="color: #466579; font-size: 14px; margin: 0; line-height: 1.6; white-space: pre-wrap;">${report.detail || 'Nenhum detalhe fornecido.'}</p>
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Fechar',
+    })
+  }
+
   async function handleResolveReport(reportId: number) {
     const user = JSON.parse(localStorage.getItem('central-academica-utp:session-user') || '{}');
     if (!user.id) return;
-
     try {
       await requestJson(`/api/reports/${reportId}/status`, {
         method: 'PATCH',
@@ -73,18 +263,51 @@ export function ModerationView({
     }
   }
 
-  async function handleDeleteReport(reportId: number) {
+  // ATUALIZADA: Excluir denúncia usando pop-up visualmente idêntico ao padrão do sistema
+  async function handleDeleteReport(report: Report) {
     const user = JSON.parse(localStorage.getItem('central-academica-utp:session-user') || '{}');
     if (!user.id) return;
+    
+    const result = await Swal.fire({
+      width: 400,
+      padding: '30px',
+      showConfirmButton: false,
+      showCancelButton: false,
+      customClass: { popup: 'application-popup' },
+      html: `
+        <div style="text-align: center;">
+          <div style="font-size: 50px; margin-bottom: 15px;">⚠️</div>
+          <h3 style="margin: 0 0 10px 0; color: #1e293b; font-size: 22px; font-weight: bold;">Excluir denúncia?</h3>
+          <p style="margin: 0 0 24px 0; color: #4b5563; font-size: 15px; line-height: 1.5;">
+            Você está prestes a remover permanentemente a denúncia <strong>"${report.title}"</strong>. Esta ação não pode ser desfeita.
+          </p>
+          <div style="display: flex; gap: 16px; justify-content: center; align-items: center;">
+            <button id="custom-cancel-btn" class="ghost-button" style="margin: 0; cursor: pointer;">
+              Cancelar
+            </button>
+            <button id="custom-confirm-btn" class="primary-button" style="background-color: #dc2626; color: white; border: none; margin: 0; cursor: pointer;">
+              Excluir agora
+            </button>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        document.getElementById('custom-confirm-btn')?.addEventListener('click', () => {
+          Swal.clickConfirm();
+        });
+        document.getElementById('custom-cancel-btn')?.addEventListener('click', () => {
+          Swal.clickCancel();
+        });
+      }
+    });
 
-    const conf = confirm('Tem certeza que deseja apagar essa denúncia?');
-    if (!conf) return;
-
-    try {
-      await requestJson(`/api/reports/${reportId}?userId=${user.id}&role=${user.role}`, { method: 'DELETE' });
-      onRefresh();
-    } catch (error) {
-      alert('Erro ao apagar denúncia.');
+    if (result.isConfirmed) {
+      try {
+        await requestJson(`/api/reports/${report.id}?userId=${user.id}&role=${user.role}`, { method: 'DELETE' });
+        onRefresh();
+      } catch (error) {
+        Swal.fire('Erro!', 'Ocorreu um problema ao tentar apagar a denúncia.', 'error');
+      }
     }
   }
 
@@ -120,7 +343,8 @@ export function ModerationView({
                   <span className={`status-pill status-${slugifyStatus(item.status)}`}>{item.status}</span>
                   <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     <button type="button" onClick={() => onModerate('Aprovado', item)}>Aprovar</button>
-                    <button type="button" style={{ color: '#dc2626' }} onClick={() => onDelete(item)}>Excluir</button>
+                    <button type="button" onClick={() => onModerate('Revisao', item)}>Revisar</button>
+                    <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => onDelete(item)}>Excluir</button>
                   </div>
                 </div>
               ))}
@@ -139,7 +363,8 @@ export function ModerationView({
                   <span>{item.zone}</span>
                   <span>{item.author}</span>
                   <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button type="button" style={{ color: '#dc2626' }} onClick={() => onDeleteRideItem(item.id, item.type, item.title)}>Excluir</button>
+                    <button type="button" onClick={() => void handleReviewRide(item)}>Revisar</button>
+                    <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => onDeleteRideItem(item.id, item.type, item.title)}>Excluir</button>
                   </div>
                 </div>
               ))}
@@ -149,40 +374,53 @@ export function ModerationView({
 
         <aside className="moderation-side">
           <section className="moderation-card">
+            <div className="moderation-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div><h3>Achados e Perdidos</h3></div>
+              <button type="button" className="primary-button" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={onOpenLostItemModal}>
+                Registrar Item
+              </button>
+            </div>
+            <div className="lost-admin-list">
+              {lostItems.map((item) => (
+                <article key={item.id} className="lost-admin-item">
+                  <div><strong>{item.title}</strong><small>{item.date}</small></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
+                    <button type="button" className="status-pill status-success" style={{ cursor: 'pointer', border: 'none', margin: 0 }} onClick={() => onMarkLostItemRecovered(item)}>
+                      Marcar recuperado
+                    </button>
+                    <button type="button" style={{ margin: 0, padding: '4px 12px', fontSize: '13px', cursor: 'pointer', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#475569' }} onClick={() => void handleConsultarItem(item)}>
+                      Ver detalhes
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="moderation-card">
             <div className="moderation-card-header"><h3>Alertas de Segurança</h3></div>
             <div className="report-list">
               {reports.map((report) => (
                 <article key={report.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <strong style={{ fontSize: '14px', color: '#1e293b' }}>{report.title}</strong>
-                    
-                    {/* Status padronizado */}
-                    <span 
-                      className="status-pill" 
-                      style={{ 
-                        backgroundColor: report.status === 'Aberta' ? '#fef3c7' : '#dcfce7',
-                        color: report.status === 'Aberta' ? '#b45309' : '#15803d',
-                        fontSize: '11px', fontWeight: 'bold', margin: 0 
-                      }}
-                    >
+                    <strong style={{ fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{report.title}</strong>
+                    <span className="status-pill" style={{ backgroundColor: report.status === 'Aberta' ? '#fef3c7' : '#dcfce7', color: report.status === 'Aberta' ? '#b45309' : '#15803d', fontSize: '11px', fontWeight: 'bold', margin: 0 }}>
                       {report.status === 'Aberta' ? 'Em Análise' : 'Encerrada'}
                     </span>
                   </div>
-                  <p style={{ color: '#475569', fontSize: '13px', marginBottom: '12px' }}>{report.detail}</p>
+                  <p style={{ color: '#475569', fontSize: '13px', marginBottom: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{report.detail}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <small style={{ color: '#94a3b8' }}>{report.createdAt}</small>
-                    
-                    {/* Botões padronizados */}
-                    <div className="row-actions" style={{ display: 'flex', gap: '12px' }}>
+                    <div className="row-actions" style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" onClick={() => void handleReviewReport(report)}>Revisar</button>
                       {report.status === 'Aberta' && (
                         <button type="button" onClick={() => handleResolveReport(report.id)}>Resolver</button>
                       )}
-                      <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => handleDeleteReport(report.id)}>Excluir</button>
+                      <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => void handleDeleteReport(report)}>Excluir</button>
                     </div>
                   </div>
                 </article>
               ))}
-              {reports.length === 0 && <p style={{ fontSize: '13px', color: '#64748b' }}>Nenhuma denúncia.</p>}
             </div>
           </section>
         </aside>

@@ -11,7 +11,6 @@ import { LoginScreen } from './components/layout/LoginScreen'
 import { LostItemModal } from './components/modals/LostItemModal'
 import { PublishModal } from './components/modals/PublishModal'
 import { RideModal } from './components/modals/RideModal'
-import { ReportModal } from './components/modals/ReportModal'
 import {
   BriefcaseIcon,
   CarIcon,
@@ -40,7 +39,6 @@ import type {
   PageView,
   PostStatus,
   PublishForm,
-  ReportForm,
   RideForm,
   RideOffer,
 } from './types/app'
@@ -100,7 +98,6 @@ function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
   const [isRideModalOpen, setIsRideModalOpen] = useState(false)
   const [isLostItemModalOpen, setIsLostItemModalOpen] = useState(false)
-  const [isReportModalOpen, setIsReportModalOpen] = useState(false) // ESTADO DA DENÚNCIA
   const [editingRideId, setEditingRideId] = useState<number | null>(null)
   const [adminSnapshot, setAdminSnapshot] = useState<AdminDatabaseSnapshot | null>(null)
   const [appliedPostIds, setAppliedPostIds] = useState<number[]>([])
@@ -111,7 +108,6 @@ function App() {
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
   
   const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
-  
   const [rideItemParaExcluir, setRideItemParaExcluir] = useState<{ id: number, type: 'Oferta' | 'Pedido', title: string } | null>(null);
   
   const [publishForm, setPublishForm] = useState<PublishForm>({
@@ -121,8 +117,6 @@ function App() {
     contactEmail: '',
     description: '',
   })
-  
-  const [reportForm, setReportForm] = useState<ReportForm>({ title: '', detail: '' }) // FORM DA DENÚNCIA
   
   const [rideForm, setRideForm] = useState<RideForm>({
     zone: '',
@@ -426,29 +420,53 @@ function App() {
     }
   }
 
-  // === NOVA FUNÇÃO DE SUBMISSÃO DA DENÚNCIA ===
-  async function handleReportSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  // === FUNÇÃO DO MODAL DE DENÚNCIA COM SWAL ===
+  async function handleOpenReportModal() {
     if (!sessionUser) return
 
-    if (!reportForm.title.trim() || !reportForm.detail.trim()) {
-      await Swal.fire({ icon: 'warning', title: 'Campos obrigatórios', text: 'Preencha o título e os detalhes.' })
-      return
-    }
+    const result = await Swal.fire({
+      title: 'Registrar Denúncia',
+      html: `
+        <div style="text-align: left;">
+          <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Relate publicações inadequadas ou irregularidades. A moderação analisará o caso anonimamente.</p>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #163a54; font-size: 14px;">Motivo ou Título da Denúncia</label>
+            <input id="report-swal-title" class="swal2-input" placeholder="Ex: Publicação ofensiva, Vaga falsa" style="width: 100%; box-sizing: border-box; margin: 0; font-size: 14px;">
+          </div>
+          <div>
+            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #163a54; font-size: 14px;">Detalhes e Evidências</label>
+            <textarea id="report-swal-detail" class="swal2-textarea" placeholder="Descreva o que aconteceu com o máximo de detalhes..." style="width: 100%; box-sizing: border-box; margin: 0; min-height: 120px; font-size: 14px;"></textarea>
+          </div>
+          <p style="color: #dc2626; font-size: 12px; margin-top: 15px; font-weight: bold;">SIGILO GARANTIDO: Sua identidade não será revelada aos autores.</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Enviar Denúncia',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      customClass: { popup: 'application-popup' },
+      preConfirm: () => {
+        const title = (document.getElementById('report-swal-title') as HTMLInputElement).value
+        const detail = (document.getElementById('report-swal-detail') as HTMLTextAreaElement).value
+        if (!title.trim() || !detail.trim()) {
+          Swal.showValidationMessage('Preencha o título e os detalhes.')
+          return false
+        }
+        return { title, detail }
+      }
+    })
 
-    try {
-      const response = await requestJson<{ data: AppData }>('/api/reports', {
-        method: 'POST',
-        body: JSON.stringify({ userId: sessionUser.id, ...reportForm }),
-      })
-
-      setAppData(response.data)
-      setIsReportModalOpen(false)
-      setReportForm({ title: '', detail: '' })
-
-      await toast.fire({ icon: 'success', title: 'Denúncia registrada com sucesso. A equipe investigará.' })
-    } catch (error) {
-      await Swal.fire({ icon: 'error', title: 'Falha ao reportar', text: error instanceof Error ? error.message : 'Tente novamente.' })
+    if (result.isConfirmed && result.value) {
+      try {
+        const response = await requestJson<{ data: AppData }>('/api/reports', {
+          method: 'POST',
+          body: JSON.stringify({ userId: sessionUser.id, ...result.value }),
+        })
+        setAppData(response.data)
+        await toast.fire({ icon: 'success', title: 'Denúncia registrada com sucesso. A equipe investigará.' })
+      } catch (error) {
+        await Swal.fire({ icon: 'error', title: 'Falha ao reportar', text: error instanceof Error ? error.message : 'Tente novamente.' })
+      }
     }
   }
 
@@ -1160,25 +1178,26 @@ function App() {
             }}
           />
         ) : null}
-        {currentView === 'career' ? (
+       {currentView === 'career' ? (
           <CareerView
+            userId={sessionUser.id} 
             careerProfile={careerProfile}
             isSaving={isSavingProfile}
             onCareerChange={setCareerProfile}
             onSave={() => void handleSaveProfile()}
           />
         ) : null}
-       {currentView === 'mural' ? (
+        {currentView === 'mural' ? (
           <MuralView
             userRole={sessionUser.role}
             muralPosts={appData.muralPosts}
             importantDeadlines={appData.importantDeadlines}
             careerProfile={careerProfile}
             appliedPostIds={appliedPostIds}
-            jobInterests={appData.jobInterests ?? []} 
+            jobInterests={appData.jobInterests ?? []}
             onApply={(post) => void handleApply(post)}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
-            onOpenReportModal={() => setIsReportModalOpen(true)}
+            onOpenReportModal={() => void handleOpenReportModal()}
           />
         ) : null}
         {currentView === 'moderation' ? (
@@ -1223,15 +1242,6 @@ function App() {
         />
       ) : null}
 
-      {isReportModalOpen ? (
-        <ReportModal
-          reportForm={reportForm}
-          onClose={() => setIsReportModalOpen(false)}
-          onSubmit={(event) => void handleReportSubmit(event)}
-          onChange={setReportForm}
-        />
-      ) : null}
-
       {isRideModalOpen ? (
         <RideModal
           rideForm={rideForm}
@@ -1254,7 +1264,6 @@ function App() {
         />
       ) : null}
 
-      {/* NOSSO MODAL DE EXCLUSÃO DE PUBLICAÇÕES */}
       {itemParaExcluir ? (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
@@ -1286,7 +1295,6 @@ function App() {
         </div>
       ) : null}
 
-      {/* NOSSO MODAL UNIFICADO DE CARONAS (OFERTAS E PEDIDOS) */}
       {rideItemParaExcluir ? (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
