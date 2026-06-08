@@ -1297,6 +1297,98 @@ export async function createJobApplication({ userId, publicationId, studentName 
   }
 }
 
+export async function createReport({ userId, title, detail }) {
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      insert into denuncias (
+        titulo,
+        detalhe,
+        status_denuncia,
+        data_criacao
+      )
+      values ($1, $2, 'Aberta', now())
+      returning id_denuncia
+    `,
+    [title, detail],
+  )
+
+  await recordAuditLog({
+    userId,
+    action: 'DENUNCIA_CRIADA',
+    entity: 'denuncias',
+    entityId: result.rows[0]?.id_denuncia,
+    detail: { title },
+  })
+
+ 
+  return getAppData(userId, 'student') 
+}
+
+export async function updateReportStatus(reportId, status, userId, role) {
+  if (role !== 'admin') {
+    throw new Error('Apenas administradores podem atualizar o status de uma denuncia.')
+  }
+
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      update denuncias
+      set status_denuncia = $2
+      where id_denuncia = $1
+      returning id_denuncia
+    `,
+    [reportId, status],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Denuncia nao encontrada.')
+  }
+
+  await recordAuditLog({
+    userId,
+    action: 'STATUS_DENUNCIA_ATUALIZADO',
+    entity: 'denuncias',
+    entityId: reportId,
+    detail: { status },
+  })
+
+  return getAppData(userId, role)
+}
+
+export async function deleteReport(reportId, userId, role) {
+    if (role !== 'admin') {
+        throw new Error('Apenas administradores podem deletar uma denuncia.')
+    }
+
+    const pool = await connectToDatabase()
+
+    const result = await pool.query(
+      `
+        delete from denuncias
+        where id_denuncia = $1
+        returning id_denuncia
+      `,
+      [reportId],
+    )
+
+    if (!result.rowCount) {
+      throw new Error('Denuncia nao encontrada para exclusao.')
+    }
+
+    await recordAuditLog({
+      userId,
+      action: 'DENUNCIA_EXCLUIDA',
+      entity: 'denuncias',
+      entityId: reportId,
+      detail: { message: 'Denuncia deletada permanentemente pelo moderador' },
+    })
+
+    return getAppData(userId, role)
+}
+
 export async function getAdminDatabaseSnapshot(userId) {
   const pool = await connectToDatabase()
   const user = await getUserById(userId)

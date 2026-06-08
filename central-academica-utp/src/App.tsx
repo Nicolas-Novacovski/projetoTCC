@@ -11,6 +11,7 @@ import { LoginScreen } from './components/layout/LoginScreen'
 import { LostItemModal } from './components/modals/LostItemModal'
 import { PublishModal } from './components/modals/PublishModal'
 import { RideModal } from './components/modals/RideModal'
+import { ReportModal } from './components/modals/ReportModal'
 import {
   BriefcaseIcon,
   CarIcon,
@@ -39,6 +40,7 @@ import type {
   PageView,
   PostStatus,
   PublishForm,
+  ReportForm,
   RideForm,
   RideOffer,
 } from './types/app'
@@ -81,16 +83,6 @@ function removeRideRequestFromAppData(data: AppData, requestId: number): AppData
   }
 }
 
-function stripResumeContentFromAppData(data: AppData): AppData {
-  return {
-    ...data,
-    careerProfile: {
-      ...data.careerProfile,
-      resumeFileContent: '',
-    },
-  }
-}
-
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [currentView, setCurrentView] = useState<PageView>('mural')
@@ -108,6 +100,7 @@ function App() {
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false)
   const [isRideModalOpen, setIsRideModalOpen] = useState(false)
   const [isLostItemModalOpen, setIsLostItemModalOpen] = useState(false)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false) // ESTADO DA DENÚNCIA
   const [editingRideId, setEditingRideId] = useState<number | null>(null)
   const [adminSnapshot, setAdminSnapshot] = useState<AdminDatabaseSnapshot | null>(null)
   const [appliedPostIds, setAppliedPostIds] = useState<number[]>([])
@@ -119,7 +112,6 @@ function App() {
   
   const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
   
-  // Novo estado que entende se é Oferta ou Pedido
   const [rideItemParaExcluir, setRideItemParaExcluir] = useState<{ id: number, type: 'Oferta' | 'Pedido', title: string } | null>(null);
   
   const [publishForm, setPublishForm] = useState<PublishForm>({
@@ -129,6 +121,9 @@ function App() {
     contactEmail: '',
     description: '',
   })
+  
+  const [reportForm, setReportForm] = useState<ReportForm>({ title: '', detail: '' }) // FORM DA DENÚNCIA
+  
   const [rideForm, setRideForm] = useState<RideForm>({
     zone: '',
     title: '',
@@ -198,11 +193,7 @@ function App() {
     if (storedAppData) {
       try {
         const parsedData = JSON.parse(storedAppData) as AppData
-        setAppData({
-          ...parsedData,
-          appliedPostIds: parsedData.appliedPostIds ?? [],
-          jobInterests: parsedData.jobInterests ?? [],
-        })
+        setAppData(parsedData)
         setCareerProfile(parsedData.careerProfile)
         setAppliedPostIds(parsedData.appliedPostIds ?? [])
       } catch {
@@ -278,7 +269,7 @@ function App() {
       return
     }
 
-    window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(stripResumeContentFromAppData(appData)))
+    window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(appData))
   }, [appData, sessionUser])
 
   useEffect(() => {
@@ -435,6 +426,32 @@ function App() {
     }
   }
 
+  // === NOVA FUNÇÃO DE SUBMISSÃO DA DENÚNCIA ===
+  async function handleReportSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!sessionUser) return
+
+    if (!reportForm.title.trim() || !reportForm.detail.trim()) {
+      await Swal.fire({ icon: 'warning', title: 'Campos obrigatórios', text: 'Preencha o título e os detalhes.' })
+      return
+    }
+
+    try {
+      const response = await requestJson<{ data: AppData }>('/api/reports', {
+        method: 'POST',
+        body: JSON.stringify({ userId: sessionUser.id, ...reportForm }),
+      })
+
+      setAppData(response.data)
+      setIsReportModalOpen(false)
+      setReportForm({ title: '', detail: '' })
+
+      await toast.fire({ icon: 'success', title: 'Denúncia registrada com sucesso. A equipe investigará.' })
+    } catch (error) {
+      await Swal.fire({ icon: 'error', title: 'Falha ao reportar', text: error instanceof Error ? error.message : 'Tente novamente.' })
+    }
+  }
+
   async function handleSaveProfile() {
     if (!sessionUser) return
     setIsSavingProfile(true)
@@ -535,9 +552,6 @@ function App() {
     }
   }
 
-  // === MODAIS DE EXCLUSÃO ===
-  
-  // 1. Excluir Publicações do Mural
   const handleRequestDelete = (item: ModerationPost) => {
     setItemParaExcluir(item);
   };
@@ -559,7 +573,6 @@ function App() {
     }
   };
 
-  // 2. Excluir Caronas (Unificado: Ofertas e Pedidos)
   const handleConfirmDeleteRideItem = async () => {
     if (!rideItemParaExcluir || !sessionUser) return;
 
@@ -707,7 +720,6 @@ function App() {
       })
 
       setAppliedPostIds((current) => (current.includes(post.id) ? current : [...current, post.id]))
-      void refreshAppData()
 
       await Swal.fire({
         icon: response.application.emailSent ? 'success' : 'info',
@@ -850,7 +862,6 @@ function App() {
     try {
       const response = await requestJson<{ data: AppData }>('/api/lost-items', {
         method: 'POST',
-     
         body: JSON.stringify({ userId: sessionUser.id, role: sessionUser.role, ...lostItemForm }),
       })
 
@@ -1151,23 +1162,23 @@ function App() {
         ) : null}
         {currentView === 'career' ? (
           <CareerView
-            userId={sessionUser.id}
             careerProfile={careerProfile}
             isSaving={isSavingProfile}
             onCareerChange={setCareerProfile}
             onSave={() => void handleSaveProfile()}
           />
         ) : null}
-        {currentView === 'mural' ? (
+       {currentView === 'mural' ? (
           <MuralView
             userRole={sessionUser.role}
             muralPosts={appData.muralPosts}
             importantDeadlines={appData.importantDeadlines}
             careerProfile={careerProfile}
             appliedPostIds={appliedPostIds}
-            jobInterests={appData.jobInterests}
+            jobInterests={appData.jobInterests ?? []} 
             onApply={(post) => void handleApply(post)}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
+            onOpenReportModal={() => setIsReportModalOpen(true)}
           />
         ) : null}
         {currentView === 'moderation' ? (
@@ -1201,12 +1212,23 @@ function App() {
         ) : null}
       </AuthenticatedLayout>
 
+      {/* === MODAIS RENDERIZADOS AQUI === */}
+
       {isPublishModalOpen ? (
         <PublishModal
           publishForm={publishForm}
           onClose={() => setIsPublishModalOpen(false)}
           onSubmit={(event) => void handlePublishSubmit(event)}
           onChange={setPublishForm}
+        />
+      ) : null}
+
+      {isReportModalOpen ? (
+        <ReportModal
+          reportForm={reportForm}
+          onClose={() => setIsReportModalOpen(false)}
+          onSubmit={(event) => void handleReportSubmit(event)}
+          onChange={setReportForm}
         />
       ) : null}
 

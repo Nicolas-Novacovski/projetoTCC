@@ -132,7 +132,18 @@ export type JobInterest = {
   createdAt: string
 }
 
-export type Report = { id: number; title: string; detail: string; status: string; createdAt: string }
+export type ReportForm = {
+  title: string
+  detail: string
+}
+
+export type Report = { 
+  id: number; 
+  title: string; 
+  detail: string; 
+  status: 'Aberta' | 'Resolvida'; 
+  createdAt: string 
+}
 
 export type RideRequest = {
   id: number
