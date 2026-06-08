@@ -211,7 +211,7 @@ export function ModerationView({
   }
 
   async function handleReviewReport(report: Report) {
-const isClosed = String(report.status) === 'Resolvida' || String(report.status) === 'Encerrada';
+    const isClosed = String(report.status) === 'Resolvida' || String(report.status) === 'Encerrada'; 
     const statusColor = isClosed ? '#15803d' : '#b45309';
     const statusBg = isClosed ? '#dcfce7' : '#fef3c7';
     const statusText = isClosed ? 'Encerrada' : 'Em Análise';
@@ -263,7 +263,6 @@ const isClosed = String(report.status) === 'Resolvida' || String(report.status) 
     }
   }
 
-  // ATUALIZADA: Excluir denúncia usando pop-up visualmente idêntico ao padrão do sistema
   async function handleDeleteReport(report: Report) {
     const user = JSON.parse(localStorage.getItem('central-academica-utp:session-user') || '{}');
     if (!user.id) return;
@@ -330,7 +329,8 @@ const isClosed = String(report.status) === 'Resolvida' || String(report.status) 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <section className="moderation-card moderation-table-card">
-            <div className="moderation-card-header"><div><h3>Fila de aprovacao</h3></div></div>
+            {/* TÍTULO ATUALIZADO AQUI */}
+            <div className="moderation-card-header"><div><h3>Fila de Aprovação do Mural</h3></div></div>
             <div className="moderation-table">
               <div className="moderation-table-head">
                 <span>Titulo</span><span>Categoria</span><span>Autor</span><span>Status</span><span style={{ textAlign: 'center' }}>Acoes</span>
@@ -362,9 +362,9 @@ const isClosed = String(report.status) === 'Resolvida' || String(report.status) 
                   <div><strong>{item.title}</strong></div>
                   <span>{item.zone}</span>
                   <span>{item.author}</span>
-                  <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button type="button" onClick={() => void handleReviewRide(item)}>Revisar</button>
-                    <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => onDeleteRideItem(item.id, item.type, item.title)}>Excluir</button>
+                  <div className="row-actions" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '8px', justifyContent: 'center' }}>
+                    <button type="button" style={{ whiteSpace: 'nowrap' }} onClick={() => void handleReviewRide(item)}>Revisar</button>
+                    <button type="button" style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} onClick={() => onDeleteRideItem(item.id, item.type, item.title)}>Excluir</button>
                   </div>
                 </div>
               ))}
@@ -404,8 +404,8 @@ const isClosed = String(report.status) === 'Resolvida' || String(report.status) 
                 <article key={report.id} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <strong style={{ fontSize: '14px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{report.title}</strong>
-                    <span className="status-pill" style={{ backgroundColor: report.status === 'Aberta' ? '#fef3c7' : '#dcfce7', color: report.status === 'Aberta' ? '#b45309' : '#15803d', fontSize: '11px', fontWeight: 'bold', margin: 0 }}>
-                      {report.status === 'Aberta' ? 'Em Análise' : 'Encerrada'}
+                    <span className="status-pill" style={{ backgroundColor: String(report.status) === 'Aberta' ? '#fef3c7' : '#dcfce7', color: String(report.status) === 'Aberta' ? '#b45309' : '#15803d', fontSize: '11px', fontWeight: 'bold', margin: 0 }}>
+                      {String(report.status) === 'Aberta' ? 'Em Análise' : 'Encerrada'}
                     </span>
                   </div>
                   <p style={{ color: '#475569', fontSize: '13px', marginBottom: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{report.detail}</p>
@@ -413,9 +413,11 @@ const isClosed = String(report.status) === 'Resolvida' || String(report.status) 
                     <small style={{ color: '#94a3b8' }}>{report.createdAt}</small>
                     <div className="row-actions" style={{ display: 'flex', gap: '8px' }}>
                       <button type="button" onClick={() => void handleReviewReport(report)}>Revisar</button>
-                      {report.status === 'Aberta' && (
-                        <button type="button" onClick={() => handleResolveReport(report.id)}>Resolver</button>
+                      
+                      {String(report.status) === 'Aberta' && (
+                        <button type="button" onClick={() => handleResolveReport(report.id)}>Encerrar</button>
                       )}
+                      
                       <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => void handleDeleteReport(report)}>Excluir</button>
                     </div>
                   </div>

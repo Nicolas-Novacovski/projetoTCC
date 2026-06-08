@@ -82,17 +82,26 @@ export function MuralView({
         {post.meta ? <div className="card-meta"><span><ClockIcon />{post.meta[0]}</span><span>{post.meta[1]}</span></div> : null}
         <div className="card-meta"><span>Autor: {post.author}</span><span>Status: {post.status}</span></div>
         
-        {post.button ? (
-          <div className="application-action-row">
-            <span>{applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}</span>
+        {/* TRAVA 1 E NOVO LAYOUT DO BOTÃO */}
+        {post.button && userRole === 'student' ? (
+          <div className="application-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+            <span style={{ fontSize: '14px', color: '#64748b' }}>
+              {applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}
+            </span>
             {applicationStatus === 'available' ? (
-              <button className="primary-button" type="button" onClick={() => onApply(post)}>
+              <button 
+                className="primary-button" 
+                type="button" 
+                style={{ padding: '6px 16px', fontSize: '13px', margin: 0, height: 'auto', minWidth: '120px' }} 
+                onClick={() => onApply(post)}
+              >
                 {post.button}
               </button>
             ) : null}
           </div>
         ) : null}
-        {interest ? (
+
+        {interest && userRole === 'student' ? (
           <div className="interest-history-strip">
             <span>Status do e-mail: <strong>{interest.emailStatus}</strong></span>
             <span>Declarado em: <strong>{interest.createdAt}</strong></span>
@@ -115,15 +124,17 @@ export function MuralView({
         </div>
         
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', height: 'fit-content' }}>
-          {/* Botão de Denunciar agora vermelho e sólido */}
-          <button 
-            className="primary-button" 
-            type="button" 
-            style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0, height: 'fit-content' }} 
-            onClick={onOpenReportModal}
-          >
-            Registrar Denuncia
-          </button>
+          {/* TRAVA 2: O botão de Registrar Denúncia só aparece para perfil de estudante */}
+          {userRole === 'student' && (
+            <button 
+              className="primary-button" 
+              type="button" 
+              style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0, height: 'fit-content' }} 
+              onClick={onOpenReportModal}
+            >
+              Registrar Denuncia
+            </button>
+          )}
           <button 
             className="primary-button" 
             type="button" 
