@@ -1049,7 +1049,18 @@ function App() {
         menuItems={menuItems}
         onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         onChangeView={setCurrentView}
-        onRefresh={() => void refreshAppData()}
+        onRefresh={() => {
+          const aprovados = appData.muralPosts
+            .filter((post) => post.author === sessionUser?.name && post.status === 'Aprovado')
+            .map((post) => post.id)
+          
+          const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
+          const novasLidas = Array.from(new Set([...lidas, ...aprovados]))
+          localStorage.setItem('notificacoesLidas', JSON.stringify(novasLidas))
+
+          setIsNotificationsOpen(false)
+          void refreshAppData()
+        }}
         onToggleProfileMenu={() => {
           setIsProfileMenuOpen((current) => !current)
           setIsAccessibilityMenuOpen(false)

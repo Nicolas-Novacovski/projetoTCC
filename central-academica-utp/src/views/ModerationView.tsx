@@ -3,6 +3,7 @@ import { showFeatureAlert } from '../lib/alerts'
 import { slugifyStatus } from '../lib/navigation'
 import type { DashboardStats, LostItem, ModerationPost, PostStatus, Report, RideOffer } from '../types/app'
 import { requestJson } from '../lib/http'
+import { CheckIcon, EyeIcon, TrashIcon } from '../components/icons'
 
 type ModerationViewProps = {
   moderationQueue: ModerationPost[]
@@ -329,7 +330,6 @@ export function ModerationView({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           <section className="moderation-card moderation-table-card">
-            {/* TÍTULO ATUALIZADO AQUI */}
             <div className="moderation-card-header"><div><h3>Fila de Aprovação do Mural</h3></div></div>
             <div className="moderation-table">
               <div className="moderation-table-head">
@@ -341,10 +341,20 @@ export function ModerationView({
                   <span>{item.category}</span>
                   <span>{item.author}</span>
                   <span className={`status-pill status-${slugifyStatus(item.status)}`}>{item.status}</span>
+                  
+                  {/* MODIFICADO PARA ÍCONES: Fila de Aprovação */}
                   <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button type="button" onClick={() => onModerate('Aprovado', item)}>Aprovar</button>
-                    <button type="button" onClick={() => onModerate('Revisao', item)}>Revisar</button>
-                    <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => onDelete(item)}>Excluir</button>
+                    {item.status !== 'Aprovado' && (
+                      <button type="button" title="Aprovar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d' }} onClick={() => onModerate('Aprovado', item)}>
+                        <CheckIcon />
+                      </button>
+                    )}
+                    <button type="button" title="Revisar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }} onClick={() => onModerate('Revisao', item)}>
+                      <EyeIcon />
+                    </button>
+                    <button type="button" title="Excluir" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }} onClick={() => onDelete(item)}>
+                      <TrashIcon />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -362,9 +372,15 @@ export function ModerationView({
                   <div><strong>{item.title}</strong></div>
                   <span>{item.zone}</span>
                   <span>{item.author}</span>
+                  
+                  {/* MODIFICADO PARA ÍCONES: Caronas */}
                   <div className="row-actions" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '8px', justifyContent: 'center' }}>
-                    <button type="button" style={{ whiteSpace: 'nowrap' }} onClick={() => void handleReviewRide(item)}>Revisar</button>
-                    <button type="button" style={{ color: '#dc2626', fontWeight: 'bold', whiteSpace: 'nowrap' }} onClick={() => onDeleteRideItem(item.id, item.type, item.title)}>Excluir</button>
+                    <button type="button" title="Revisar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }} onClick={() => void handleReviewRide(item)}>
+                      <EyeIcon />
+                    </button>
+                    <button type="button" title="Excluir" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }} onClick={() => onDeleteRideItem(item.id, item.type, item.title)}>
+                      <TrashIcon />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -411,14 +427,22 @@ export function ModerationView({
                   <p style={{ color: '#475569', fontSize: '13px', marginBottom: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{report.detail}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <small style={{ color: '#94a3b8' }}>{report.createdAt}</small>
+                    
+                    {/* MODIFICADO PARA ÍCONES: Segurança */}
                     <div className="row-actions" style={{ display: 'flex', gap: '8px' }}>
-                      <button type="button" onClick={() => void handleReviewReport(report)}>Revisar</button>
+                      <button type="button" title="Revisar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }} onClick={() => void handleReviewReport(report)}>
+                        <EyeIcon />
+                      </button>
                       
                       {String(report.status) === 'Aberta' && (
-                        <button type="button" onClick={() => handleResolveReport(report.id)}>Encerrar</button>
+                        <button type="button" title="Encerrar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d' }} onClick={() => handleResolveReport(report.id)}>
+                          <CheckIcon />
+                        </button>
                       )}
                       
-                      <button type="button" style={{ color: '#dc2626', fontWeight: 'bold' }} onClick={() => void handleDeleteReport(report)}>Excluir</button>
+                      <button type="button" title="Excluir" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }} onClick={() => void handleDeleteReport(report)}>
+                        <TrashIcon />
+                      </button>
                     </div>
                   </div>
                 </article>
