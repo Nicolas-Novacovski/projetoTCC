@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { BriefcaseIcon, CalendarIcon, ClockIcon } from '../components/icons'
+import { BriefcaseIcon, CalendarIcon, ClockIcon, TrashIcon } from '../components/icons'
 import type { ApplicationStatus, CareerProfile, Deadline, JobInterest, MuralPost, UserRole } from '../types/app'
 
 type MuralViewProps = {
   userRole: UserRole
+  currentUserName: string 
   muralPosts: MuralPost[]
   importantDeadlines: Deadline[]
   careerProfile: CareerProfile
@@ -11,17 +12,22 @@ type MuralViewProps = {
   jobInterests: JobInterest[]
   onApply: (post: MuralPost) => void
   onOpenPublishModal: () => void
+  onOpenReportModal: () => void
+  onDeleteMyPost: (post: MuralPost) => void 
 }
 
 export function MuralView({
   userRole,
+  currentUserName,
   muralPosts,
   importantDeadlines,
   careerProfile,
   appliedPostIds,
-  jobInterests,
+  jobInterests = [],
   onApply,
   onOpenPublishModal,
+  onOpenReportModal,
+  onDeleteMyPost,
 }: MuralViewProps) {
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('Todos')
@@ -46,18 +52,14 @@ export function MuralView({
   }
 
   function getMatchLabel(post: MuralPost) {
-    if (post.category !== 'Vaga') {
-      return null
-    }
-
-    const profileArea = careerProfile.desiredArea.trim().toLowerCase()
-    const profileCity = careerProfile.preferredCity.trim().toLowerCase()
+    if (post.category !== 'Vaga') return null
+    const profileArea = (careerProfile.desiredArea || '').trim().toLowerCase()
+    const profileCity = (careerProfile.preferredCity || '').trim().toLowerCase()
     const searchablePost = `${post.title} ${post.subtitle} ${post.description}`.toLowerCase()
     const matches = [
       profileArea && searchablePost.includes(profileArea),
       profileCity && searchablePost.includes(profileCity),
     ].filter(Boolean).length
-
     if (matches >= 2) return 'Alta aderencia'
     if (matches === 1) return 'Aderencia media'
     return 'Analise recomendada'
@@ -66,6 +68,13 @@ export function MuralView({
   function renderPost(post: MuralPost) {
     const applicationStatus = getApplicationStatus(post)
     const interest = jobInterests.find((item) => item.postId === post.id)
+    
+   
+    const isMyPost = Boolean(
+      post.author && 
+      currentUserName && 
+      post.author.trim().toLowerCase() === currentUserName.trim().toLowerCase()
+    )
 
     return (
       <article key={post.id} className={`mural-card${applicationStatus === 'submitted' ? ' application-sent-card' : ''}`}>
@@ -80,23 +89,51 @@ export function MuralView({
           </div>
         </div>
         <p className="card-description">{post.description}</p>
-        {post.meta ? <div className="card-meta" aria-label="Informacoes adicionais"><span><ClockIcon />{post.meta[0]}</span><span>{post.meta[1]}</span></div> : null}
-        <div className="card-meta" aria-label="Informacoes do autor"><span>Autor: {post.author}</span><span>Status: {post.status}</span></div>
-        {post.button ? (
-          <div className="application-action-row">
-            <span>{applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}</span>
-            {applicationStatus === 'available' ? (
-              <button className="primary-button" type="button" onClick={() => onApply(post)}>
+        {post.meta ? <div className="card-meta"><span><ClockIcon />{post.meta[0]}</span><span>{post.meta[1]}</span></div> : null}
+        
+        <div className="card-meta">
+          <span>Autor: {isMyPost ? 'Você' : post.author}</span>
+          <span>Status: {post.status}</span>
+        </div>
+        
+        
+        {(post.button || isMyPost) && userRole === 'student' ? (
+          <div className="application-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+            <span style={{ fontSize: '14px', color: '#64748b' }}>
+              {isMyPost 
+                ? 'Esta publicação foi criada por você.' 
+                : applicationStatus === 'submitted' 
+                  ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' 
+                  : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}
+            </span>
+            
+            {isMyPost ? (
+               <button 
+                type="button" 
+                className="ghost-button"
+                style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: '6px' }} 
+                onClick={() => onDeleteMyPost(post)}
+              >
+                <TrashIcon />
+                Excluir postagem
+              </button>
+            ) : post.button && applicationStatus === 'available' ? (
+              <button 
+                className="primary-button" 
+                type="button" 
+                style={{ padding: '6px 16px', fontSize: '13px', margin: 0, height: 'auto', minWidth: '120px' }} 
+                onClick={() => onApply(post)}
+              >
                 {post.button}
               </button>
             ) : null}
           </div>
         ) : null}
-        {interest ? (
+
+        {interest && userRole === 'student' ? (
           <div className="interest-history-strip">
             <span>Status do e-mail: <strong>{interest.emailStatus}</strong></span>
             <span>Declarado em: <strong>{interest.createdAt}</strong></span>
-            <span>Contato: <strong>{interest.contactEmail}</strong></span>
           </div>
         ) : null}
       </article>
@@ -105,7 +142,7 @@ export function MuralView({
 
   return (
     <section className="page-section mural-section">
-      <div className="page-heading">
+      <div className="page-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2>Mural Academico</h2>
           <p>
@@ -114,23 +151,42 @@ export function MuralView({
               : 'Vagas, eventos e comunicados oficiais aprovados pela moderacao.'}
           </p>
         </div>
-<button className="primary-button" type="button" onClick={onOpenPublishModal}>
-  Postar no Mural
-</button>
+        
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', height: 'fit-content' }}>
+          {userRole === 'student' && (
+            <button 
+              className="primary-button" 
+              type="button" 
+              style={{ backgroundColor: '#dc2626', color: 'white', border: 'none', margin: 0, height: 'fit-content' }} 
+              onClick={onOpenReportModal}
+            >
+              Registrar Denuncia
+            </button>
+          )}
+          <button 
+            className="primary-button" 
+            type="button" 
+            style={{ margin: 0, height: 'fit-content' }} 
+            onClick={onOpenPublishModal}
+          >
+            Postar no Mural
+          </button>
+        </div>
       </div>
+
       <div className="mural-filter-bar" aria-label="Filtros do mural">
         {categoryFilters.map((category) => (
           <button
             key={category}
             className={`filter-chip${selectedCategory === category ? ' is-active' : ''}`}
             type="button"
-            aria-pressed={selectedCategory === category}
             onClick={() => setSelectedCategory(category)}
           >
             {category}
           </button>
         ))}
       </div>
+
       <div className="mural-content-grid">
         <div className="mural-list">
           <section className="mural-post-group" aria-label="Publicacoes disponiveis">
@@ -144,6 +200,7 @@ export function MuralView({
             {availablePosts.map(renderPost)}
             {availablePosts.length === 0 ? <article className="mural-card"><h3>Nenhuma publicacao disponivel</h3><p className="card-description">Tente outro filtro ou veja os interesses ja declarados abaixo.</p></article> : null}
           </section>
+          
           {interestedPosts.length > 0 ? (
             <section className="mural-post-group mural-interested-group" aria-label="Vagas com interesse declarado">
               <div className="mural-group-heading">
@@ -157,9 +214,8 @@ export function MuralView({
             </section>
           ) : null}
         </div>
-       <aside className="side-panel">
-          
-          {/* O CARD 'MEU INTERESSE' SÓ APARECE PARA O ALUNO */}
+
+        <aside className="side-panel">
           {userRole === 'student' ? (
             <div className="study-card application-profile-card">
               <div className="study-heading"><div className="study-title"><BriefcaseIcon /><h3>Meu interesse</h3></div></div>
@@ -170,7 +226,6 @@ export function MuralView({
             </div>
           ) : null}
 
-          {/* O CARD DE PRAZOS CONTINUA APARECENDO PARA TODOS */}
           <div className="study-card">
             <div className="study-heading"><div className="study-title"><CalendarIcon /><h3>Prazos Importantes</h3></div></div>
             <div className="study-list">
@@ -184,6 +239,7 @@ export function MuralView({
           </div>
         </aside>
       </div>
+
       {selectedDeadline ? (
         <div className="details-modal-backdrop" onClick={() => setSelectedDeadline(null)}>
           <div className="details-modal deadline-modal" onClick={(event) => event.stopPropagation()}>
@@ -196,18 +252,9 @@ export function MuralView({
               <button className="ghost-button" type="button" onClick={() => setSelectedDeadline(null)}>Fechar</button>
             </div>
             <div className="deadline-detail-grid">
-              <div>
-                <span className="detail-label">O que significa</span>
-                <strong>{selectedDeadline.description}</strong>
-              </div>
-              <div>
-                <span className="detail-label">Proximo passo</span>
-                <strong>{selectedDeadline.action}</strong>
-              </div>
-              <div>
-                <span className="detail-label">Onde resolver</span>
-                <strong>{selectedDeadline.channel}</strong>
-              </div>
+              <div><span className="detail-label">O que significa</span><strong>{selectedDeadline.description}</strong></div>
+              <div><span className="detail-label">Proximo passo</span><strong>{selectedDeadline.action}</strong></div>
+              <div><span className="detail-label">Onde resolver</span><strong>{selectedDeadline.channel}</strong></div>
             </div>
             <div className="details-modal-footer deadline-modal-footer">
               <div>

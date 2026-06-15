@@ -2257,26 +2257,27 @@
 }
 
 .primary-button {
-  margin-top: 22px;
-  font-size: 15px;
+  font-size: 14px; 
   background-color: #2b5a7a;
   color: #ffffff;
   font-weight: bold;
   border: 2px solid #1a3b52;
-  padding: 12px 24px;
   border-radius: 8px;
   transition: all 0.2s ease-in-out;
   cursor: pointer;
+  padding: 8px 16px; 
+  height: fit-content; 
+  white-space: nowrap; 
 }
 
-/* O efeito ao passar o mouse */
+
 .primary-button:hover {
   background-color: #1a3b52;
   border-color: #0d202e;
   transform: translateY(-1px);
 }
 
-/* O efeito para quando o botão estiver desativado (disabled) */
+
 .primary-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

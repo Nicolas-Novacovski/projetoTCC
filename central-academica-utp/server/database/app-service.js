@@ -123,7 +123,7 @@ function mapRide(row) {
     zone: row.zona_destino,
     title: row.titulo,
     driver: row.motorista,
-    driverName: row.motorista, // Adicionado para garantir que a tela de moderacao pegue o nome
+    driverName: row.motorista,
     time: `Saida ${row.horario_saida}`,
     seats: row.vagas,
     meeting: row.ponto_encontro,
@@ -574,7 +574,7 @@ export async function createPublication({ userId, role, category, title, locatio
 
 export async function createLostItem({
   userId,
-  role, // <-- Adicionado aqui
+  role,
   title,
   place,
   date,
@@ -611,7 +611,6 @@ export async function createLostItem({
     detail: { title, category, place, status: lostItemOpenStatus },
   })
 
-  // 👇 Substituição feita aqui na última linha:
   return getAppData(userId, role || 'student')
 }
 
@@ -664,12 +663,8 @@ export async function createRide({
   return getAppData(userId, 'student')
 }
 
-// ==== NOVA FUNÇÃO: Deletar Carona ====
 export async function deleteRide(rideId, userId) {
   const pool = await connectToDatabase()
-
-  // Opcional: Aqui poderiamos verificar se o userId é ADMIN ou DONO da carona
-  // Para simplificar, estamos assumindo que a chamada que chegou aqui já tem permissão.
 
   const result = await pool.query(
     `
@@ -694,7 +689,6 @@ export async function deleteRide(rideId, userId) {
 
   return result.rows[0]
 }
-// =====================================
 
 export async function createRideRequest({ zone, userId, whatsapp, pickupAddress, weekdays = [] }) {
   const pool = await connectToDatabase()
@@ -999,7 +993,6 @@ export async function deleteRideRequest(requestId, userId, role = 'student') {
     detail: {},
   })
 
-  // Retorna os dados corretos dependendo de quem excluiu
   return getAppData(userId, role === 'admin' ? 'admin' : 'student')
 }
 
@@ -1269,6 +1262,97 @@ export async function createJobApplication({ userId, publicationId, studentName 
     contactEmail,
     post,
   }
+}
+
+export async function createReport({ userId, title, detail }) {
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      insert into denuncias (
+        titulo,
+        detalhe,
+        status_denuncia,
+        data_criacao
+      )
+      values ($1, $2, 'Aberta', now())
+      returning id_denuncia
+    `,
+    [title, detail],
+  )
+
+  await recordAuditLog({
+    userId,
+    action: 'DENUNCIA_CRIADA',
+    entity: 'denuncias',
+    entityId: result.rows[0]?.id_denuncia,
+    detail: { title },
+  })
+
+  return getAppData(userId, 'student') 
+}
+
+export async function updateReportStatus(reportId, status, userId, role) {
+  if (role !== 'admin') {
+    throw new Error('Apenas administradores podem atualizar o status de uma denuncia.')
+  }
+
+  const pool = await connectToDatabase()
+
+  const result = await pool.query(
+    `
+      update denuncias
+      set status_denuncia = $2
+      where id_denuncia = $1
+      returning id_denuncia
+    `,
+    [reportId, status],
+  )
+
+  if (!result.rowCount) {
+    throw new Error('Denuncia nao encontrada.')
+  }
+
+  await recordAuditLog({
+    userId,
+    action: 'STATUS_DENUNCIA_ATUALIZADO',
+    entity: 'denuncias',
+    entityId: reportId,
+    detail: { status },
+  })
+
+  return getAppData(userId, role)
+}
+
+export async function deleteReport(reportId, userId, role) {
+    if (role !== 'admin') {
+        throw new Error('Apenas administradores podem deletar uma denuncia.')
+    }
+
+    const pool = await connectToDatabase()
+
+    const result = await pool.query(
+      `
+        delete from denuncias
+        where id_denuncia = $1
+        returning id_denuncia
+      `,
+      [reportId],
+    )
+
+    if (!result.rowCount) {
+      throw new Error('Denuncia nao encontrada para exclusao.')
+    }
+
+    await recordAuditLog({
+      userId,
+      action: 'DENUNCIA_EXCLUIDA',
+      entity: 'denuncias',
+      entityId: reportId,
+      detail: { message: 'Denuncia deletada permanentemente pelo moderador' },
+    })
+
+    return getAppData(userId, role)
 }
 
 export async function getAdminDatabaseSnapshot(userId) {

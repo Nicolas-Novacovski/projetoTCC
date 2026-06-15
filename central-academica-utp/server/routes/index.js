@@ -20,8 +20,10 @@ import {
   updateRideRequestStatus,
   updatePublicationStatus,
   deletePublication,
-  // IMPORTANTE: Adicionei esta função que chamaremos para excluir a carona
   deleteRide,
+  createReport,
+  updateReportStatus,
+  deleteReport,
 } from '../database/app-service.js'
 import { getDatabaseConfig } from '../database/connection.js'
 
@@ -186,7 +188,6 @@ router.post('/applications', async (request, response) => {
 })
 
 router.post('/lost-items', async (request, response) => {
-  // 👇 Adicione o role aqui na extração do body:
   const { userId, role, title, place, date, category, description, foundBy } = request.body
 
   if (!userId || !title || !place || !date || !category || !description || !foundBy) {
@@ -314,10 +315,10 @@ router.patch('/rides/:id', async (request, response) => {
   })
 })
 
-// === NOVA ROTA DE EXCLUSÃO DE CARONA ===
+
 router.delete('/rides/:id', async (request, response) => {
   const rideId = Number(request.params.id)
-  const userId = Number(request.query.userId) // Quem está deletando (Admin ou Criador)
+  const userId = Number(request.query.userId)
 
   if (!rideId || !userId) {
     return response.status(400).json({
@@ -327,7 +328,6 @@ router.delete('/rides/:id', async (request, response) => {
   }
 
   try {
-    // Chamamos a função de serviço (que precisaremos garantir que exista no app-service.js)
     await deleteRide(rideId, userId)
 
     return response.json({
@@ -342,7 +342,6 @@ router.delete('/rides/:id', async (request, response) => {
     })
   }
 })
-// ======================================
 
 router.post('/rides/:id/interests', async (request, response) => {
   const rideId = Number(request.params.id)
@@ -425,7 +424,6 @@ router.delete('/ride-requests/:id', async (request, response) => {
     })
   }
 
-
   const data = await deleteRideRequest(requestId, userId, role)
 
   return response.json({
@@ -498,10 +496,116 @@ router.delete('/publications/:id', async (request, response) => {
 
 router.put('/career-profile/:userId', async (request, response) => {
   const userId = Number(request.params.userId)
-  const data = await saveCareerProfile(userId, request.body)
+  
+  try {
+    if (!request.body) {
+      throw new Error('Nenhum dado recebido no corpo da requisição.')
+    }
+
+    const dadosLimpos = { ...request.body }
+    
+    // Limpeza agressiva: varre todos os campos em busca de "Nao informado", 
+    // "Selecione", "null" ou vazios, e converte para um null real que o banco aceita.
+    Object.keys(dadosLimpos).forEach(key => {
+      if (typeof dadosLimpos[key] === 'string') {
+        const valorOriginal = dadosLimpos[key].trim()
+        const valorLower = valorOriginal.toLowerCase()
+        
+        if (
+          valorOriginal === '' || 
+          valorLower.includes('informado') || 
+          valorLower.startsWith('selecione') ||
+          valorLower === 'null'
+        ) {
+          dadosLimpos[key] = null
+        }
+      }
+    })
+    
+    const data = await saveCareerProfile(userId, dadosLimpos)
+    
+    return response.json({
+      status: 'ok',
+      data,
+    })
+  } catch (error) {
+    console.error('ERRO AO SALVAR PERFIL:', error)
+    return response.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Erro interno ao salvar o perfil.',
+    })
+  }
+})
+router.post('/reports', async (request, response) => {
+  const { userId, title, detail } = request.body
+
+  if (!userId || !title || !detail) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Campos obrigatorios da denuncia nao enviados.',
+    })
+  }
+
+  const data = await createReport({
+    userId: Number(userId),
+    title,
+    detail,
+  })
+
+  return response.status(201).json({
+    status: 'ok',
+    data,
+  })
+})
+
+router.patch('/reports/:id/status', async (request, response) => {
+  const reportId = Number(request.params.id)
+  const { status, userId, role } = request.body
+
+  if (!['Aberta', 'Resolvida'].includes(status)) {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Status de denuncia invalido.',
+    })
+  }
+
+  const data = await updateReportStatus(
+    reportId,
+    status,
+    Number(userId),
+    role === 'admin' ? 'admin' : 'student',
+  )
 
   return response.json({
     status: 'ok',
     data,
   })
+})
+
+router.delete('/reports/:id', async (request, response) => {
+  const reportId = Number(request.params.id)
+  const userId = Number(request.query.userId)
+  const role = request.query.role
+
+  if (!reportId || !userId || role !== 'admin') {
+    return response.status(400).json({
+      status: 'error',
+      message: 'Dados invalidos ou sem permissao para excluir a denuncia.',
+    })
+  }
+
+  try {
+    const data = await deleteReport(reportId, userId, role)
+
+    return response.json({
+      status: 'ok',
+      data,
+    })
+  } catch (error) {
+    console.error('Erro ao deletar denuncia:', error)
+    return response.status(500).json({
+      status: 'error',
+      message: 'Erro interno ao excluir a denuncia.',
+    })
+  }
 })

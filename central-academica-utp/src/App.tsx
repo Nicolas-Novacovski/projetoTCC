@@ -108,8 +108,6 @@ function App() {
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
   
   const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
-  
-  // Novo estado que entende se é Oferta ou Pedido
   const [rideItemParaExcluir, setRideItemParaExcluir] = useState<{ id: number, type: 'Oferta' | 'Pedido', title: string } | null>(null);
   
   const [publishForm, setPublishForm] = useState<PublishForm>({
@@ -119,6 +117,7 @@ function App() {
     contactEmail: '',
     description: '',
   })
+  
   const [rideForm, setRideForm] = useState<RideForm>({
     zone: '',
     title: '',
@@ -188,11 +187,7 @@ function App() {
     if (storedAppData) {
       try {
         const parsedData = JSON.parse(storedAppData) as AppData
-        setAppData({
-          ...parsedData,
-          appliedPostIds: parsedData.appliedPostIds ?? [],
-          jobInterests: parsedData.jobInterests ?? [],
-        })
+        setAppData(parsedData)
         setCareerProfile(parsedData.careerProfile)
         setAppliedPostIds(parsedData.appliedPostIds ?? [])
       } catch {
@@ -425,6 +420,87 @@ function App() {
     }
   }
 
+
+  async function handleDeleteMyPost(post: MuralPost) {
+    if (!sessionUser) return
+
+    const result = await Swal.fire({
+      title: 'Excluir publicação?',
+      text: `Tem certeza que deseja remover "${post.title}" do mural? Esta ação não pode ser desfeita.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Sim, excluir',
+      cancelButtonText: 'Cancelar'
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      await requestJson(`/api/publications/${post.id}`, {
+        method: 'DELETE',
+      })
+      
+      await refreshAppData(sessionUser)
+      await toast.fire({ icon: 'success', title: 'Publicação excluída com sucesso.' })
+    } catch (error) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Falha ao excluir',
+        text: error instanceof Error ? error.message : 'Tente novamente.',
+      })
+    }
+  }
+  
+  async function handleOpenReportModal() {
+    if (!sessionUser) return
+
+    const result = await Swal.fire({
+      title: 'Registrar Denúncia',
+      html: `
+        <div style="text-align: left;">
+          <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Relate publicações inadequadas ou irregularidades. A moderação analisará o caso anonimamente.</p>
+          <div style="margin-bottom: 15px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #163a54; font-size: 14px;">Motivo ou Título da Denúncia</label>
+            <input id="report-swal-title" class="swal2-input" placeholder="Ex: Publicação ofensiva, Vaga falsa" style="width: 100%; box-sizing: border-box; margin: 0; font-size: 14px;">
+          </div>
+          <div>
+            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #163a54; font-size: 14px;">Detalhes e Evidências</label>
+            <textarea id="report-swal-detail" class="swal2-textarea" placeholder="Descreva o que aconteceu com o máximo de detalhes..." style="width: 100%; box-sizing: border-box; margin: 0; min-height: 120px; font-size: 14px;"></textarea>
+          </div>
+          <p style="color: #dc2626; font-size: 12px; margin-top: 15px; font-weight: bold;">SIGILO GARANTIDO: Sua identidade não será revelada aos autores.</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Enviar Denúncia',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#dc2626',
+      customClass: { popup: 'application-popup' },
+      preConfirm: () => {
+        const title = (document.getElementById('report-swal-title') as HTMLInputElement).value
+        const detail = (document.getElementById('report-swal-detail') as HTMLTextAreaElement).value
+        if (!title.trim() || !detail.trim()) {
+          Swal.showValidationMessage('Preencha o título e os detalhes.')
+          return false
+        }
+        return { title, detail }
+      }
+    })
+
+    if (result.isConfirmed && result.value) {
+      try {
+        const response = await requestJson<{ data: AppData }>('/api/reports', {
+          method: 'POST',
+          body: JSON.stringify({ userId: sessionUser.id, ...result.value }),
+        })
+        setAppData(response.data)
+        await toast.fire({ icon: 'success', title: 'Denúncia registrada com sucesso. A equipe investigará.' })
+      } catch (error) {
+        await Swal.fire({ icon: 'error', title: 'Falha ao reportar', text: error instanceof Error ? error.message : 'Tente novamente.' })
+      }
+    }
+  }
+
   async function handleSaveProfile() {
     if (!sessionUser) return
     setIsSavingProfile(true)
@@ -525,9 +601,6 @@ function App() {
     }
   }
 
-  // === MODAIS DE EXCLUSÃO ===
-  
-  // 1. Excluir Publicações do Mural
   const handleRequestDelete = (item: ModerationPost) => {
     setItemParaExcluir(item);
   };
@@ -549,7 +622,6 @@ function App() {
     }
   };
 
-  // 2. Excluir Caronas (Unificado: Ofertas e Pedidos)
   const handleConfirmDeleteRideItem = async () => {
     if (!rideItemParaExcluir || !sessionUser) return;
 
@@ -695,7 +767,6 @@ function App() {
       })
 
       setAppliedPostIds((current) => (current.includes(post.id) ? current : [...current, post.id]))
-      void refreshAppData()
 
       await Swal.fire({
         icon: response.application.emailSent ? 'success' : 'info',
@@ -838,7 +909,6 @@ function App() {
     try {
       const response = await requestJson<{ data: AppData }>('/api/lost-items', {
         method: 'POST',
-     
         body: JSON.stringify({ userId: sessionUser.id, role: sessionUser.role, ...lostItemForm }),
       })
 
@@ -1008,7 +1078,18 @@ function App() {
         menuItems={menuItems}
         onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         onChangeView={setCurrentView}
-        onRefresh={() => void refreshAppData()}
+        onRefresh={() => {
+          const aprovados = appData.muralPosts
+            .filter((post) => post.author === sessionUser?.name && post.status === 'Aprovado')
+            .map((post) => post.id)
+          
+          const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
+          const novasLidas = Array.from(new Set([...lidas, ...aprovados]))
+          localStorage.setItem('notificacoesLidas', JSON.stringify(novasLidas))
+
+          setIsNotificationsOpen(false)
+          void refreshAppData()
+        }}
         onToggleProfileMenu={() => {
           setIsProfileMenuOpen((current) => !current)
           setIsAccessibilityMenuOpen(false)
@@ -1126,7 +1207,7 @@ function App() {
             }}
           />
         ) : null}
-        {currentView === 'career' ? (
+       {currentView === 'career' ? (
           <CareerView
             careerProfile={careerProfile}
             isSaving={isSavingProfile}
@@ -1137,13 +1218,16 @@ function App() {
         {currentView === 'mural' ? (
           <MuralView
             userRole={sessionUser.role}
+            currentUserName={sessionUser?.name || ''}
             muralPosts={appData.muralPosts}
             importantDeadlines={appData.importantDeadlines}
             careerProfile={careerProfile}
             appliedPostIds={appliedPostIds}
-            jobInterests={appData.jobInterests}
+            jobInterests={appData.jobInterests ?? []}
             onApply={(post) => void handleApply(post)}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
+            onOpenReportModal={() => void handleOpenReportModal()}
+            onDeleteMyPost={(post) => void handleDeleteMyPost(post)}
           />
         ) : null}
         {currentView === 'moderation' ? (
@@ -1177,6 +1261,8 @@ function App() {
         ) : null}
       </AuthenticatedLayout>
 
+      {/* === MODAIS RENDERIZADOS AQUI === */}
+
       {isPublishModalOpen ? (
         <PublishModal
           publishForm={publishForm}
@@ -1208,7 +1294,6 @@ function App() {
         />
       ) : null}
 
-      {/* NOSSO MODAL DE EXCLUSÃO DE PUBLICAÇÕES */}
       {itemParaExcluir ? (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
@@ -1240,7 +1325,6 @@ function App() {
         </div>
       ) : null}
 
-      {/* NOSSO MODAL UNIFICADO DE CARONAS (OFERTAS E PEDIDOS) */}
       {rideItemParaExcluir ? (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div className="modal-content delete-confirm-modal" style={{ background: 'white', padding: '30px', borderRadius: '12px', maxWidth: '400px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
