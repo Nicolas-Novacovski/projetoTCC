@@ -23,7 +23,6 @@ type RidesViewProps = {
   onCreateRideRequest: (zone: string, payload: RideRequestForm) => Promise<void>
   onUpdateRideRequest: (requestId: number, zone: string, payload: RideRequestForm) => Promise<void>
   onCloseRide: (rideId: number) => Promise<void>
-  onDeclareRideInterest: (rideId: number, payload: RideRequestForm) => Promise<void>
   onAcceptRideRequest: (requestId: number) => Promise<void>
   onDeleteRideRequest: (requestId: number) => Promise<void>
 }
@@ -39,7 +38,6 @@ export function RidesView({
   onCreateRideRequest,
   onUpdateRideRequest,
   onCloseRide,
-  onDeclareRideInterest,
   onAcceptRideRequest,
   onDeleteRideRequest,
 }: RidesViewProps) {
@@ -200,39 +198,6 @@ export function RidesView({
     })
   }
 
-  async function handleDeclareRideInterest(ride: RideOffer) {
-    const result = await Swal.fire({
-      title: 'Declarar interesse na vaga',
-      html: `
-        <div class="swal-inline-form">
-          <input id="ride-interest-whatsapp" class="swal2-input" placeholder="Seu WhatsApp" />
-          <textarea id="ride-interest-address" class="swal2-textarea" placeholder="Seu endereco ou ponto de embarque"></textarea>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Enviar interesse',
-      cancelButtonText: 'Cancelar',
-      preConfirm: () => {
-        const whatsapp = (document.getElementById('ride-interest-whatsapp') as HTMLInputElement | null)?.value.trim() ?? ''
-        const pickupAddress = (document.getElementById('ride-interest-address') as HTMLTextAreaElement | null)?.value.trim() ?? ''
-
-        if (!whatsapp || !pickupAddress) {
-          Swal.showValidationMessage('Preencha seu WhatsApp e endereco para registrar o interesse.')
-          return null
-        }
-
-        return { whatsapp, pickupAddress }
-      },
-    })
-
-    if (!result.isConfirmed || !result.value) {
-      return
-    }
-
-    await onDeclareRideInterest(ride.id, result.value)
-    await toast.fire({ icon: 'success', title: 'Interesse enviado ao motorista.' })
-  }
-
   async function handleContactAcceptedDriver(request: RideRequest) {
     if (!request.acceptedByWhatsapp || !request.acceptedByName) {
       await Swal.fire({
@@ -391,7 +356,6 @@ export function RidesView({
                 ) : (
                   <div className="ride-contact-actions">
                     <button className="primary-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleTalkToDriver(ride)}>Entrar em contato com motorista</button>
-                    <button className="interest-button" type="button" disabled={ride.status !== 'Ativa'} onClick={() => void handleDeclareRideInterest(ride)}>Declarar interesse</button>
                   </div>
                 )}
                 {ride.driverId === currentUserId ? (

@@ -81,16 +81,6 @@ function removeRideRequestFromAppData(data: AppData, requestId: number): AppData
   }
 }
 
-function stripResumeContentFromAppData(data: AppData): AppData {
-  return {
-    ...data,
-    careerProfile: {
-      ...data.careerProfile,
-      resumeFileContent: '',
-    },
-  }
-}
-
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [currentView, setCurrentView] = useState<PageView>('mural')
@@ -278,7 +268,7 @@ function App() {
       return
     }
 
-    window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(stripResumeContentFromAppData(appData)))
+    window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(appData))
   }, [appData, sessionUser])
 
   useEffect(() => {
@@ -618,7 +608,6 @@ function App() {
   async function handleApply(post: MuralPost) {
     const jobContactEmail = post.contactEmail || 'secretaria@utp.br'
     const missingProfileItems = [
-      !careerProfile.resumeFileName ? 'curriculo' : null,
       !careerProfile.contactEmail ? 'e-mail de contato' : null,
       !careerProfile.course ? 'curso' : null,
       !careerProfile.desiredArea ? 'area desejada' : null,
@@ -662,7 +651,6 @@ function App() {
             <div><span>E-mail</span><strong>${careerProfile.contactEmail || 'Nao informado'}</strong></div>
             <div><span>Curso</span><strong>${careerProfile.course || 'Nao informado'}</strong></div>
             <div><span>Area</span><strong>${careerProfile.desiredArea || 'Nao informada'}</strong></div>
-            <div><span>Curriculo</span><strong>${careerProfile.resumeFileName || 'Nao anexado'}</strong></div>
             <div><span>Contato da vaga</span><strong>${jobContactEmail}</strong></div>
           </div>
           <p class="application-review-note">Seu interesse ficara registrado visualmente nesta sessao e usa os dados atuais do perfil profissional.</p>
@@ -723,7 +711,7 @@ function App() {
             <p>${response.application.emailMessage}</p>
             <div class="application-disclaimer">
               <strong>Aviso importante</strong>
-              <p>A Central Academica nao realiza a inscricao do aluno na vaga e nao se responsabiliza pelo processo seletivo. Nos apenas encaminhamos as informacoes ao aluno. O estudante deve entrar em contato com a empresa, enviar o curriculo quando necessario e acompanhar todas as etapas diretamente com o responsavel pela oportunidade.</p>
+              <p>A Central Academica nao realiza a inscricao do aluno na vaga e nao se responsabiliza pelo processo seletivo. Nos apenas encaminhamos as informacoes ao aluno. O estudante deve entrar em contato com a empresa e acompanhar todas as etapas diretamente com o responsavel pela oportunidade.</p>
             </div>
             <div class="application-contact-box">
               <span>Contato da vaga</span>
@@ -951,11 +939,11 @@ function App() {
   ].filter((item) => item.visible)
 
   const notifications = [
-    !careerProfile.resumeFileName || !careerProfile.contactEmail || !careerProfile.course || !careerProfile.desiredArea
+    !careerProfile.contactEmail || !careerProfile.course || !careerProfile.desiredArea
       ? {
           id: 'career-profile',
           title: 'Perfil profissional incompleto',
-          detail: 'Complete curriculo, e-mail, curso e area desejada para declarar interesse em vagas.',
+          detail: 'Complete e-mail, curso e area desejada para declarar interesse em vagas.',
           tone: 'warning' as const,
         }
       : {
@@ -1097,17 +1085,6 @@ function App() {
               })
               setAppData(response.data)
             }}
-            onDeclareRideInterest={async (rideId, payload) => {
-              const response = await requestJson<{ data: AppData }>(`/api/rides/${rideId}/interests`, {
-                method: 'POST',
-                body: JSON.stringify({
-                  userId: sessionUser.id,
-                  whatsapp: payload.whatsapp,
-                  pickupAddress: payload.pickupAddress,
-                }),
-              })
-              setAppData(response.data)
-            }}
             onAcceptRideRequest={async (requestId) => {
               const response = await requestJson<{ data: AppData }>(`/api/ride-requests/${requestId}/status`, {
                 method: 'PATCH',
@@ -1151,7 +1128,6 @@ function App() {
         ) : null}
         {currentView === 'career' ? (
           <CareerView
-            userId={sessionUser.id}
             careerProfile={careerProfile}
             isSaving={isSavingProfile}
             onCareerChange={setCareerProfile}

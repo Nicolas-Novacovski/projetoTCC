@@ -1,7 +1,6 @@
 import type { CareerProfile, CareerProfileSetter } from '../types/app'
 
 type CareerViewProps = {
-  userId: number
   careerProfile: CareerProfile
   isSaving: boolean
   onCareerChange: CareerProfileSetter
@@ -37,7 +36,6 @@ const desiredAreaOptions = [
 ]
 
 export function CareerView({
-  userId,
   careerProfile,
   isSaving,
   onCareerChange,
@@ -46,67 +44,26 @@ export function CareerView({
   const requiredFields = [
     careerProfile.course,
     careerProfile.semester,
-    careerProfile.resumeFileName,
     careerProfile.contactEmail,
     careerProfile.desiredArea,
   ]
   const completedRequiredFields = requiredFields.filter((value) => String(value ?? '').trim()).length
   const isReadyForInterests = completedRequiredFields === requiredFields.length
   const readinessLabel = isReadyForInterests ? 'Pronto para declarar interesse' : 'Perfil em preparacao'
-  const resumeSizeLabel = careerProfile.resumeFileSize
-    ? `${(careerProfile.resumeFileSize / 1024 / 1024).toFixed(2)} MB`
-    : 'Tamanho nao informado'
   const requirementItems = [
     { label: 'Curso', done: Boolean(careerProfile.course.trim()) },
     { label: 'Semestre', done: Boolean(careerProfile.semester.trim()) },
-    { label: 'Curriculo', done: Boolean(careerProfile.resumeFileName.trim()) },
     { label: 'E-mail', done: Boolean(careerProfile.contactEmail.trim()) },
     { label: 'Area desejada', done: Boolean(careerProfile.desiredArea.trim()) },
   ]
-
-  function handleResumeFileChange(file: File | undefined) {
-    if (!file) return
-
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ]
-
-    if (!allowedTypes.includes(file.type)) {
-      window.alert('Selecione um arquivo PDF, DOC ou DOCX.')
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      window.alert('O curriculo deve ter no maximo 5 MB.')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = String(reader.result || '')
-      const [, content = ''] = result.split(',')
-
-      onCareerChange((current) => ({
-        ...current,
-        resumeFileName: file.name,
-        resumeFileContent: content,
-        resumeFileMimeType: file.type,
-        resumeFileSize: file.size,
-      }))
-    }
-    reader.readAsDataURL(file)
-  }
 
   return (
     <section className="page-section career-section">
       <div className="page-heading">
         <div>
           <h2>Perfil Profissional</h2>
-          <p>Cadastre seu curriculo e defina preferencias para receber vagas mais alinhadas.</p>
+          <p>Defina suas preferencias para receber vagas mais alinhadas.</p>
         </div>
-        {/* O botão foi retirado daqui! */}
       </div>
       <section className="career-overview" aria-label="Resumo do perfil profissional">
         <div className="career-progress-panel career-hero-panel">
@@ -127,7 +84,6 @@ export function CareerView({
           <div><span className="detail-label">Area</span><strong>{careerProfile.desiredArea || 'Nao informada'}</strong></div>
           <div><span className="detail-label">Curso</span><strong>{careerProfile.course || 'Nao informado'}</strong></div>
           <div><span className="detail-label">Semestre</span><strong>{careerProfile.semester || 'Nao informado'}</strong></div>
-          <div><span className="detail-label">Curriculo</span><strong>{careerProfile.resumeFileName ? 'Anexado' : 'Pendente'}</strong></div>
           <div><span className="detail-label">E-mail</span><strong>{careerProfile.contactEmail || 'Nao informado'}</strong></div>
         </div>
       </section>
@@ -162,38 +118,12 @@ export function CareerView({
             <label className="form-field"><span>E-mail para receber vagas</span><input type="email" value={careerProfile.contactEmail} onChange={(event) => onCareerChange((current) => ({ ...current, contactEmail: event.target.value }))} /></label>
           </div>
           
-          {/* O BOTÃO VEIO PARA CÁ! */}
           <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end' }}>
             <button className="primary-button" type="button" onClick={onSave} disabled={isSaving}>
               {isSaving ? 'Salvando...' : 'Salvar preferencias'}
             </button>
           </div>
 
-        </section>
-        <section className="career-card career-form-card career-resume-card">
-          <div className="career-card-header">
-            <h3>Curriculo</h3>
-            <p>O arquivo fica registrado pelo nome para uso nos interesses declarados.</p>
-          </div>
-          <div className="resume-upload-card">
-            <span className="detail-label">Arquivo atual</span>
-            <strong>{careerProfile.resumeFileName || 'Nenhum curriculo informado'}</strong>
-            {careerProfile.resumeFileName ? <span className="resume-file-meta">{resumeSizeLabel}</span> : null}
-            {careerProfile.resumeFileName ? (
-              <a className="resume-download-link" href={`/api/career-profile/${userId}/resume`}>
-                Baixar curriculo salvo
-              </a>
-            ) : null}
-            <label className="ghost-upload-button">
-              Selecionar curriculo
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                onChange={(event) => handleResumeFileChange(event.target.files?.[0])}
-              />
-            </label>
-            <p className="resume-upload-hint">Aceitamos PDF, DOC ou DOCX ate 5 MB. O arquivo fica salvo no banco e pode ser anexado ao e-mail.</p>
-          </div>
         </section>
       </div>
     </section>

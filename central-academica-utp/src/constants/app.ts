@@ -7,10 +7,6 @@ export const adminCredentials = { login: 'admin.utp', password: 'moderacao123' }
 export const emptyCareerProfile: CareerProfile = {
   course: '',
   semester: '',
-  resumeFileName: '',
-  resumeFileContent: '',
-  resumeFileMimeType: '',
-  resumeFileSize: 0,
   contactEmail: '',
   desiredArea: '',
   salaryExpectation: '',

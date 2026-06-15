@@ -107,10 +107,6 @@ async function ensureDatabaseSchema(pool) {
       id_usuario integer references usuarios(id_usuario) on delete cascade,
       curso varchar(120) not null,
       semestre varchar(40) not null,
-      arquivo_curriculo varchar(255),
-      curriculo_conteudo text,
-      curriculo_mime varchar(120),
-      curriculo_tamanho integer,
       area_desejada varchar(120),
       pretensao_salarial varchar(80),
       modelo_trabalho varchar(40),
@@ -125,7 +121,6 @@ async function ensureDatabaseSchema(pool) {
       id_usuario integer references usuarios(id_usuario) on delete set null,
       email_aluno varchar(160) not null,
       email_contato_vaga varchar(160) not null,
-      curriculo varchar(255),
       status_email varchar(40) not null default 'Pendente',
       data_criacao timestamp without time zone not null default now()
     )
@@ -157,9 +152,12 @@ async function ensureDatabaseSchema(pool) {
   await pool.query(`alter table usuarios add column if not exists data_criacao timestamp without time zone not null default now()`)
   await pool.query(`alter table publicacoes_mural add column if not exists email_contato varchar(160)`)
   await pool.query(`alter table perfis_profissionais add column if not exists email_contato varchar(160)`)
-  await pool.query(`alter table perfis_profissionais add column if not exists curriculo_conteudo text`)
-  await pool.query(`alter table perfis_profissionais add column if not exists curriculo_mime varchar(120)`)
-  await pool.query(`alter table perfis_profissionais add column if not exists curriculo_tamanho integer`)
+  await pool.query(`alter table perfis_profissionais add column if not exists area_desejada varchar(120)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists pretensao_salarial varchar(80)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists modelo_trabalho varchar(40)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists cidade_preferencia varchar(120)`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists email_aluno varchar(160)`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists email_contato_vaga varchar(160)`)
   await pool.query(`alter table candidaturas_vagas add column if not exists data_criacao timestamp without time zone not null default now()`)
   await pool.query(`alter table candidaturas_vagas add column if not exists status_email varchar(40) not null default 'Pendente'`)
   await pool.query(`alter table solicitacoes_caronas add column if not exists data_criacao timestamp without time zone not null default now()`)
@@ -392,20 +390,18 @@ async function ensureCareerProfile(pool, studentId) {
         id_usuario,
         curso,
         semestre,
-        arquivo_curriculo,
         email_contato,
         area_desejada,
         pretensao_salarial,
         modelo_trabalho,
         cidade_preferencia
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      values ($1, $2, $3, $4, $5, $6, $7, $8)
     `,
     [
       studentId,
       'Analise e Desenvolvimento de Sistemas',
       '4 semestre',
-      'curriculo-nicolas.pdf',
       'nicolas@aluno.utp.br',
       'Desenvolvimento Front-end',
       'R$ 1.800 a R$ 2.500',

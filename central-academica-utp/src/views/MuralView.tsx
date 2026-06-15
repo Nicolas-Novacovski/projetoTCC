@@ -56,7 +56,6 @@ export function MuralView({
     const matches = [
       profileArea && searchablePost.includes(profileArea),
       profileCity && searchablePost.includes(profileCity),
-      careerProfile.resumeFileName,
     ].filter(Boolean).length
 
     if (matches >= 2) return 'Alta aderencia'
@@ -167,7 +166,6 @@ export function MuralView({
               <div className="application-profile-summary">
                 <div><span>Area</span><strong>{careerProfile.desiredArea || 'Completar perfil'}</strong></div>
                 <div><span>E-mail</span><strong>{careerProfile.contactEmail || 'Pendente'}</strong></div>
-                <div><span>Curriculo</span><strong>{careerProfile.resumeFileName || 'Pendente'}</strong></div>
               </div>
             </div>
           ) : null}

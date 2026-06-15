@@ -1,5 +1,4 @@
 import type { FormEvent } from 'react'
-import { adminCredentials, studentCredentials } from '../../constants/app'
 import type { LoginMode } from '../../types/app'
 
 type LoginScreenProps = {
@@ -37,6 +36,7 @@ export function LoginScreen({
     <div className="login-page">
       <div className="login-panel">
         <div className="login-hero">
+          <img className="login-logo" src="/utp-logo-transparent.png" alt="Universidade Tuiuti do Parana" />
           <span className="login-eyebrow">Central Academica UTP</span>
           <h1>{loginMode === 'student' ? 'Acesse com seu RA' : 'Acesso administrativo'}</h1>
           <p>
@@ -44,17 +44,6 @@ export function LoginScreen({
               ? 'Entre com o Registro do Aluno e sua data de nascimento para abrir o portal conectado ao Neon.'
               : 'Entre com as credenciais da moderacao para revisar publicacoes e denuncias em tempo real.'}
           </p>
-          <div className="login-demo-card">
-            <span className="login-demo-label">
-              {loginMode === 'student' ? 'Credencial de aluno' : 'Credencial administrativa'}
-            </span>
-            <strong>{loginMode === 'student' ? studentCredentials.ra : adminCredentials.login}</strong>
-            <small>
-              {loginMode === 'student'
-                ? `Data de nascimento: ${studentCredentials.birthDate}`
-                : `Senha de teste: ${adminCredentials.password}`}
-            </small>
-          </div>
         </div>
         <form className="login-card" onSubmit={onSubmit}>
           <div className="login-card-header">
@@ -85,7 +74,7 @@ export function LoginScreen({
                   type="text"
                   inputMode="numeric"
                   maxLength={10}
-                  placeholder="2024193227"
+                  placeholder="Digite seu RA"
                   value={ra}
                   onChange={(event) => onRaChange(event.target.value)}
                 />
@@ -101,7 +90,7 @@ export function LoginScreen({
                 <span>Login</span>
                 <input
                   type="text"
-                  placeholder="admin.utp"
+                  placeholder="Login institucional"
                   value={adminLogin}
                   onChange={(event) => onAdminLoginChange(event.target.value)}
                 />
@@ -110,7 +99,7 @@ export function LoginScreen({
                 <span>Senha</span>
                 <input
                   type="password"
-                  placeholder="moderacao123"
+                  placeholder="Digite sua senha"
                   value={adminPassword}
                   onChange={(event) => onAdminPasswordChange(event.target.value)}
                 />
@@ -121,20 +110,6 @@ export function LoginScreen({
           <button className="login-submit" type="submit" disabled={isLoading}>
             {isLoading ? 'Entrando...' : loginMode === 'student' ? 'Entrar no sistema' : 'Entrar na moderacao'}
           </button>
-          <div className="login-help">
-            <span>Credenciais de teste</span>
-            {loginMode === 'student' ? (
-              <>
-                <p>RA: {studentCredentials.ra}</p>
-                <p>Data: {studentCredentials.birthDate}</p>
-              </>
-            ) : (
-              <>
-                <p>Login: {adminCredentials.login}</p>
-                <p>Senha: {adminCredentials.password}</p>
-              </>
-            )}
-          </div>
         </form>
       </div>
     </div>

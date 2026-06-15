@@ -10,7 +10,6 @@ import {
   deleteRideRequest,
   getAdminDatabaseSnapshot,
   getAppData,
-  getCareerResumeFile,
   loginAdmin,
   loginStudent,
   markLostItemRecovered,
@@ -159,16 +158,31 @@ router.post('/applications', async (request, response) => {
     })
   }
 
-  const application = await createJobApplication({
-    userId: Number(userId),
-    publicationId: Number(publicationId),
-    studentName: studentName || 'Estudante UTP',
-  })
+  try {
+    const application = await createJobApplication({
+      userId: Number(userId),
+      publicationId: Number(publicationId),
+      studentName: studentName || 'Estudante UTP',
+    })
 
-  return response.status(201).json({
-    status: 'ok',
-    application,
-  })
+    return response.status(201).json({
+      status: 'ok',
+      application,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Nao foi possivel registrar interesse na vaga.'
+    const expectedError = [
+      'Vaga nao encontrada',
+      'Informe um e-mail',
+      'Usuario nao encontrado',
+    ].some((text) => message.includes(text))
+
+    return response.status(expectedError ? 400 : 500).json({
+      status: 'error',
+      message: expectedError ? message : 'Nao foi possivel registrar interesse na vaga.',
+      details: message,
+    })
+  }
 })
 
 router.post('/lost-items', async (request, response) => {
@@ -490,20 +504,4 @@ router.put('/career-profile/:userId', async (request, response) => {
     status: 'ok',
     data,
   })
-})
-
-router.get('/career-profile/:userId/resume', async (request, response) => {
-  const userId = Number(request.params.userId)
-  const resume = await getCareerResumeFile(userId)
-
-  if (!resume) {
-    return response.status(404).json({
-      status: 'error',
-      message: 'Curriculo nao encontrado.',
-    })
-  }
-
-  response.setHeader('Content-Type', resume.mimeType)
-  response.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(resume.fileName)}"`)
-  return response.send(resume.buffer)
 })

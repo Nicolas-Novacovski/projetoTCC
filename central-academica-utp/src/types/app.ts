@@ -97,10 +97,6 @@ export type RideRequestForm = { whatsapp: string; pickupAddress: string; weekday
 export type CareerProfile = {
   course: string
   semester: string
-  resumeFileName: string
-  resumeFileContent: string
-  resumeFileMimeType: string
-  resumeFileSize: number
   contactEmail: string
   desiredArea: string
   salaryExpectation: string

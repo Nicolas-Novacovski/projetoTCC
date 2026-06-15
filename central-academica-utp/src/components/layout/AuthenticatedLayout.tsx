@@ -80,7 +80,7 @@ export function AuthenticatedLayout({
     <div className={shellClasses}>
       <aside className="sidebar">
         <div className="sidebar-header">
-          <span className="brand-name">{sessionUser.role === 'admin' ? 'Painel UTP' : 'Portal Tuiuti'}</span>
+          <img className="brand-logo" src="/utp-logo-transparent.png" alt="Universidade Tuiuti do Parana" />
         </div>
         <nav className="sidebar-nav" aria-label="Menu lateral">
           {menuItems.map(({ label, icon: Icon, view }) => (
@@ -109,6 +109,7 @@ export function AuthenticatedLayout({
             >
               <MenuIcon />
             </button>
+            <img className="topbar-logo" src="/utp-logo-transparent.png" alt="Universidade Tuiuti do Parana" />
           </div>
           <div className="topbar-actions">
             <div className="accessibility-menu" ref={accessibilityMenuRef}>

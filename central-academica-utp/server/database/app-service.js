@@ -31,6 +31,21 @@ const lostItemRecoveredStatus = 'Recuperado'
 
 const weekdayOrder = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']
 
+async function ensureCareerProfileSchema(pool) {
+  await pool.query(`alter table perfis_profissionais add column if not exists email_contato varchar(160)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists area_desejada varchar(120)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists pretensao_salarial varchar(80)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists modelo_trabalho varchar(40)`)
+  await pool.query(`alter table perfis_profissionais add column if not exists cidade_preferencia varchar(120)`)
+}
+
+async function ensureJobApplicationSchema(pool) {
+  await pool.query(`alter table candidaturas_vagas add column if not exists email_aluno varchar(160)`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists email_contato_vaga varchar(160)`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists data_criacao timestamp without time zone not null default now()`)
+  await pool.query(`alter table candidaturas_vagas add column if not exists status_email varchar(40) not null default 'Pendente'`)
+}
+
 function normalizeWeekdays(weekdays = []) {
   if (!Array.isArray(weekdays)) {
     return []
@@ -194,10 +209,6 @@ function mapCareerProfile(row) {
     return {
       course: '',
       semester: '',
-      resumeFileName: '',
-      resumeFileContent: '',
-      resumeFileMimeType: '',
-      resumeFileSize: 0,
       contactEmail: '',
       desiredArea: '',
       salaryExpectation: '',
@@ -209,10 +220,6 @@ function mapCareerProfile(row) {
   return {
     course: row.curso,
     semester: row.semestre,
-    resumeFileName: row.arquivo_curriculo || '',
-    resumeFileContent: row.curriculo_conteudo || '',
-    resumeFileMimeType: row.curriculo_mime || '',
-    resumeFileSize: Number(row.curriculo_tamanho || 0),
     contactEmail: row.email_contato || '',
     desiredArea: row.area_desejada || '',
     salaryExpectation: row.pretensao_salarial || '',
@@ -381,6 +388,9 @@ export async function loginAdmin(login, password) {
 
 export async function getAppData(userId, role) {
   const pool = await connectToDatabase()
+  await ensureCareerProfileSchema(pool)
+  await ensureJobApplicationSchema(pool)
+
   const user = await getUserById(userId)
   const isAdmin = role === 'admin'
 
@@ -1073,6 +1083,11 @@ export async function deletePublication(publicationId) {
 
 export async function saveCareerProfile(userId, profile) {
   const pool = await connectToDatabase()
+  await ensureCareerProfileSchema(pool)
+  const normalizedWorkModel = ['Presencial', 'Hibrido', 'Remoto'].includes(profile.workModel)
+    ? profile.workModel
+    : null
+
   const existing = await pool.query(
     `
       select id_perfil
@@ -1090,30 +1105,22 @@ export async function saveCareerProfile(userId, profile) {
         update perfis_profissionais
         set curso = $2,
             semestre = $3,
-            arquivo_curriculo = $4,
-            email_contato = $5,
-            area_desejada = $6,
-            pretensao_salarial = $7,
-            modelo_trabalho = $8,
-            cidade_preferencia = $9,
-            curriculo_conteudo = coalesce($10, curriculo_conteudo),
-            curriculo_mime = coalesce($11, curriculo_mime),
-            curriculo_tamanho = coalesce($12, curriculo_tamanho)
+            email_contato = $4,
+            area_desejada = $5,
+            pretensao_salarial = $6,
+            modelo_trabalho = $7,
+            cidade_preferencia = $8
         where id_perfil = $1
       `,
       [
         existing.rows[0].id_perfil,
         profile.course,
         profile.semester,
-        profile.resumeFileName,
         profile.contactEmail,
         profile.desiredArea,
-        null,
-        'Nao informado',
-        null,
-        profile.resumeFileContent || null,
-        profile.resumeFileMimeType || null,
-        Number(profile.resumeFileSize || 0) || null,
+        profile.salaryExpectation || null,
+        normalizedWorkModel,
+        profile.preferredCity || null,
       ],
     )
 
@@ -1131,32 +1138,24 @@ export async function saveCareerProfile(userId, profile) {
           id_usuario,
           curso,
           semestre,
-          arquivo_curriculo,
           email_contato,
           area_desejada,
           pretensao_salarial,
           modelo_trabalho,
-          cidade_preferencia,
-          curriculo_conteudo,
-          curriculo_mime,
-          curriculo_tamanho
+          cidade_preferencia
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        values ($1, $2, $3, $4, $5, $6, $7, $8)
         returning id_perfil
       `,
       [
         userId,
         profile.course,
         profile.semester,
-        profile.resumeFileName,
         profile.contactEmail,
         profile.desiredArea,
-        null,
-        'Nao informado',
-        null,
-        profile.resumeFileContent || null,
-        profile.resumeFileMimeType || null,
-        Number(profile.resumeFileSize || 0) || null,
+        profile.salaryExpectation || null,
+        normalizedWorkModel,
+        profile.preferredCity || null,
       ],
     )
 
@@ -1172,34 +1171,10 @@ export async function saveCareerProfile(userId, profile) {
   return getAppData(userId, 'student')
 }
 
-export async function getCareerResumeFile(userId) {
-  const pool = await connectToDatabase()
-  const result = await pool.query(
-    `
-      select arquivo_curriculo, curriculo_conteudo, curriculo_mime
-      from perfis_profissionais
-      where id_usuario = $1
-      order by id_perfil desc
-      limit 1
-    `,
-    [userId],
-  )
-
-  const row = result.rows[0]
-
-  if (!row?.curriculo_conteudo) {
-    return null
-  }
-
-  return {
-    fileName: row.arquivo_curriculo || 'curriculo',
-    mimeType: row.curriculo_mime || 'application/octet-stream',
-    buffer: Buffer.from(row.curriculo_conteudo, 'base64'),
-  }
-}
-
 export async function createJobApplication({ userId, publicationId, studentName }) {
   const pool = await connectToDatabase()
+  await ensureCareerProfileSchema(pool)
+  await ensureJobApplicationSchema(pool)
 
   const [publicationResult, profileResult] = await Promise.all([
     pool.query(
@@ -1247,14 +1222,13 @@ export async function createJobApplication({ userId, publicationId, studentName 
         id_usuario,
         email_aluno,
         email_contato_vaga,
-        curriculo,
         status_email,
         data_criacao
       )
-      values ($1, $2, $3, $4, $5, 'Pendente', now())
+      values ($1, $2, $3, $4, 'Pendente', now())
       returning id_candidatura
     `,
-    [publicationId, userId, profile.contactEmail, contactEmail, profile.resumeFileName || null],
+    [publicationId, userId, profile.contactEmail, contactEmail],
   )
 
   const emailResult = await sendApplicationEmail({
@@ -1299,6 +1273,9 @@ export async function createJobApplication({ userId, publicationId, studentName 
 
 export async function getAdminDatabaseSnapshot(userId) {
   const pool = await connectToDatabase()
+  await ensureCareerProfileSchema(pool)
+  await ensureJobApplicationSchema(pool)
+
   const user = await getUserById(userId)
 
   if (!user || user.role !== 'admin') {
@@ -1354,7 +1331,7 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
-        select id_candidatura, id_publicacao, id_usuario, email_aluno, email_contato_vaga, curriculo, status_email, data_criacao
+        select id_candidatura, id_publicacao, id_usuario, email_aluno, email_contato_vaga, status_email, data_criacao
         from candidaturas_vagas
         order by id_candidatura desc
       `,
@@ -1368,7 +1345,7 @@ export async function getAdminDatabaseSnapshot(userId) {
     ),
     pool.query(
       `
-        select id_perfil, id_usuario, curso, semestre, arquivo_curriculo, curriculo_mime, curriculo_tamanho, email_contato, area_desejada, modelo_trabalho, cidade_preferencia
+        select id_perfil, id_usuario, curso, semestre, email_contato, area_desejada, modelo_trabalho, cidade_preferencia
         from perfis_profissionais
         order by id_perfil desc
       `,
