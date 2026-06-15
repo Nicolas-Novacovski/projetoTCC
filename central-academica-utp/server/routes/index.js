@@ -482,12 +482,45 @@ router.delete('/publications/:id', async (request, response) => {
 
 router.put('/career-profile/:userId', async (request, response) => {
   const userId = Number(request.params.userId)
-  const data = await saveCareerProfile(userId, request.body)
+  
+  try {
+    if (!request.body) {
+      throw new Error('Nenhum dado recebido no corpo da requisição.')
+    }
 
-  return response.json({
-    status: 'ok',
-    data,
-  })
+    const dadosLimpos = { ...request.body }
+    
+    // Limpeza agressiva: varre todos os campos em busca de "Nao informado", 
+    // "Selecione", "null" ou vazios, e converte para um null real que o banco aceita.
+    Object.keys(dadosLimpos).forEach(key => {
+      if (typeof dadosLimpos[key] === 'string') {
+        const valorOriginal = dadosLimpos[key].trim()
+        const valorLower = valorOriginal.toLowerCase()
+        
+        if (
+          valorOriginal === '' || 
+          valorLower.includes('informado') || 
+          valorLower.startsWith('selecione') ||
+          valorLower === 'null'
+        ) {
+          dadosLimpos[key] = null
+        }
+      }
+    })
+    
+    const data = await saveCareerProfile(userId, dadosLimpos)
+    
+    return response.json({
+      status: 'ok',
+      data,
+    })
+  } catch (error) {
+    console.error('ERRO AO SALVAR PERFIL:', error)
+    return response.status(500).json({
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Erro interno ao salvar o perfil.',
+    })
+  }
 })
 
 router.get('/career-profile/:userId/resume', async (request, response) => {

@@ -108,7 +108,7 @@ function mapRide(row) {
     zone: row.zona_destino,
     title: row.titulo,
     driver: row.motorista,
-    driverName: row.motorista, // Adicionado para garantir que a tela de moderacao pegue o nome
+    driverName: row.motorista,
     time: `Saida ${row.horario_saida}`,
     seats: row.vagas,
     meeting: row.ponto_encontro,
@@ -564,7 +564,7 @@ export async function createPublication({ userId, role, category, title, locatio
 
 export async function createLostItem({
   userId,
-  role, // <-- Adicionado aqui
+  role,
   title,
   place,
   date,
@@ -601,7 +601,6 @@ export async function createLostItem({
     detail: { title, category, place, status: lostItemOpenStatus },
   })
 
-  // 👇 Substituição feita aqui na última linha:
   return getAppData(userId, role || 'student')
 }
 
@@ -654,12 +653,8 @@ export async function createRide({
   return getAppData(userId, 'student')
 }
 
-// ==== NOVA FUNÇÃO: Deletar Carona ====
 export async function deleteRide(rideId, userId) {
   const pool = await connectToDatabase()
-
-  // Opcional: Aqui poderiamos verificar se o userId é ADMIN ou DONO da carona
-  // Para simplificar, estamos assumindo que a chamada que chegou aqui já tem permissão.
 
   const result = await pool.query(
     `
@@ -684,7 +679,6 @@ export async function deleteRide(rideId, userId) {
 
   return result.rows[0]
 }
-// =====================================
 
 export async function createRideRequest({ zone, userId, whatsapp, pickupAddress, weekdays = [] }) {
   const pool = await connectToDatabase()
@@ -989,7 +983,6 @@ export async function deleteRideRequest(requestId, userId, role = 'student') {
     detail: {},
   })
 
-  // Retorna os dados corretos dependendo de quem excluiu
   return getAppData(userId, role === 'admin' ? 'admin' : 'student')
 }
 
@@ -1109,7 +1102,7 @@ export async function saveCareerProfile(userId, profile) {
         profile.contactEmail,
         profile.desiredArea,
         null,
-        'Nao informado',
+        null, 
         null,
         profile.resumeFileContent || null,
         profile.resumeFileMimeType || null,
@@ -1152,7 +1145,7 @@ export async function saveCareerProfile(userId, profile) {
         profile.contactEmail,
         profile.desiredArea,
         null,
-        'Nao informado',
+        null, 
         null,
         profile.resumeFileContent || null,
         profile.resumeFileMimeType || null,
@@ -1322,7 +1315,6 @@ export async function createReport({ userId, title, detail }) {
     detail: { title },
   })
 
- 
   return getAppData(userId, 'student') 
 }
 
