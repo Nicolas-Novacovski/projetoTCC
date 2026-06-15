@@ -420,7 +420,38 @@ function App() {
     }
   }
 
-  // === FUNÇÃO DO MODAL DE DENÚNCIA COM SWAL ===
+
+  async function handleDeleteMyPost(post: MuralPost) {
+    if (!sessionUser) return
+
+    const result = await Swal.fire({
+      title: 'Excluir publicação?',
+      text: `Tem certeza que deseja remover "${post.title}" do mural? Esta ação não pode ser desfeita.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Sim, excluir',
+      cancelButtonText: 'Cancelar'
+    })
+
+    if (!result.isConfirmed) return
+
+    try {
+      await requestJson(`/api/publications/${post.id}`, {
+        method: 'DELETE',
+      })
+      
+      await refreshAppData(sessionUser)
+      await toast.fire({ icon: 'success', title: 'Publicação excluída com sucesso.' })
+    } catch (error) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Falha ao excluir',
+        text: error instanceof Error ? error.message : 'Tente novamente.',
+      })
+    }
+  }
+  
   async function handleOpenReportModal() {
     if (!sessionUser) return
 
@@ -1037,6 +1068,7 @@ function App() {
       <AuthenticatedLayout
         sessionUser={sessionUser}
         currentView={currentView}
+        currentUserName={sessionUser?.name || ''}
         isSidebarOpen={isSidebarOpen}
         isProfileMenuOpen={isProfileMenuOpen}
         isAccessibilityMenuOpen={isAccessibilityMenuOpen}
@@ -1047,7 +1079,9 @@ function App() {
         accessibilitySettings={accessibilitySettings}
         notifications={notifications}
         menuItems={menuItems}
-        onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
+
+     onDeleteMyPost={(post) => void handleDeleteMyPost(post)}
+     onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
         onChangeView={setCurrentView}
         onRefresh={() => {
           const aprovados = appData.muralPosts
@@ -1201,6 +1235,7 @@ function App() {
         {currentView === 'mural' ? (
           <MuralView
             userRole={sessionUser.role}
+            currentUserName={sessionUser?.name || ''}
             muralPosts={appData.muralPosts}
             importantDeadlines={appData.importantDeadlines}
             careerProfile={careerProfile}
@@ -1209,6 +1244,7 @@ function App() {
             onApply={(post) => void handleApply(post)}
             onOpenPublishModal={() => setIsPublishModalOpen(true)}
             onOpenReportModal={() => void handleOpenReportModal()}
+            onDeleteMyPost={(post) => void handleDeleteMyPost(post)}
           />
         ) : null}
         {currentView === 'moderation' ? (

@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { BriefcaseIcon, CalendarIcon, ClockIcon } from '../components/icons'
+import { BriefcaseIcon, CalendarIcon, ClockIcon, TrashIcon } from '../components/icons'
 import type { ApplicationStatus, CareerProfile, Deadline, JobInterest, MuralPost, UserRole } from '../types/app'
 
 type MuralViewProps = {
   userRole: UserRole
+  currentUserName: string 
   muralPosts: MuralPost[]
   importantDeadlines: Deadline[]
   careerProfile: CareerProfile
@@ -12,10 +13,12 @@ type MuralViewProps = {
   onApply: (post: MuralPost) => void
   onOpenPublishModal: () => void
   onOpenReportModal: () => void
+  onDeleteMyPost: (post: MuralPost) => void 
 }
 
 export function MuralView({
   userRole,
+  currentUserName,
   muralPosts,
   importantDeadlines,
   careerProfile,
@@ -24,6 +27,7 @@ export function MuralView({
   onApply,
   onOpenPublishModal,
   onOpenReportModal,
+  onDeleteMyPost,
 }: MuralViewProps) {
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('Todos')
@@ -65,6 +69,13 @@ export function MuralView({
   function renderPost(post: MuralPost) {
     const applicationStatus = getApplicationStatus(post)
     const interest = jobInterests.find((item) => item.postId === post.id)
+    
+   
+    const isMyPost = Boolean(
+      post.author && 
+      currentUserName && 
+      post.author.trim().toLowerCase() === currentUserName.trim().toLowerCase()
+    )
 
     return (
       <article key={post.id} className={`mural-card${applicationStatus === 'submitted' ? ' application-sent-card' : ''}`}>
@@ -80,15 +91,34 @@ export function MuralView({
         </div>
         <p className="card-description">{post.description}</p>
         {post.meta ? <div className="card-meta"><span><ClockIcon />{post.meta[0]}</span><span>{post.meta[1]}</span></div> : null}
-        <div className="card-meta"><span>Autor: {post.author}</span><span>Status: {post.status}</span></div>
         
-        {/* TRAVA 1 E NOVO LAYOUT DO BOTÃO */}
-        {post.button && userRole === 'student' ? (
+        <div className="card-meta">
+          <span>Autor: {isMyPost ? 'Você' : post.author}</span>
+          <span>Status: {post.status}</span>
+        </div>
+        
+        
+        {(post.button || isMyPost) && userRole === 'student' ? (
           <div className="application-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
             <span style={{ fontSize: '14px', color: '#64748b' }}>
-              {applicationStatus === 'submitted' ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}
+              {isMyPost 
+                ? 'Esta publicação foi criada por você.' 
+                : applicationStatus === 'submitted' 
+                  ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' 
+                  : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}
             </span>
-            {applicationStatus === 'available' ? (
+            
+            {isMyPost ? (
+               <button 
+                type="button" 
+                className="ghost-button"
+                style={{ color: '#dc2626', display: 'flex', alignItems: 'center', gap: '6px' }} 
+                onClick={() => onDeleteMyPost(post)}
+              >
+                <TrashIcon />
+                Excluir postagem
+              </button>
+            ) : post.button && applicationStatus === 'available' ? (
               <button 
                 className="primary-button" 
                 type="button" 
@@ -124,7 +154,6 @@ export function MuralView({
         </div>
         
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', height: 'fit-content' }}>
-          {/* TRAVA 2: O botão de Registrar Denúncia só aparece para perfil de estudante */}
           {userRole === 'student' && (
             <button 
               className="primary-button" 

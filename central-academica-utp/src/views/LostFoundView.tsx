@@ -50,7 +50,7 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
           <h2>Achados e Perdidos</h2>
           <p>Itens localizados no campus e registrados para retirada.</p>
         </div>
-        {/* EVENTO DE CLIQUE ADICIONADO AQUI */}
+       
         <button className="primary-button" onClick={onOpenRegisterModal}>
           Registrar item
         </button>
@@ -59,10 +59,17 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
         className="lost-return-notice" 
         role="note" 
         aria-label="Orientacoes para retirada de itens"
-        style={{ display: 'flex', justifyContent: 'flex-start', gap: '24px', alignItems: 'center' }}
+        style={{ 
+          display: 'flex', 
+          justifyContent: 'flex-start', 
+          gap: '24px', 
+          alignItems: 'center',
+          padding: '8px 24px', 
+          marginBottom: '24px' 
+        }}
       >
-        <strong style={{ whiteSpace: 'nowrap' }}>RETIRADA APENAS PELOS DONOS</strong>
-        <span>Itens encontrados podem ser retirados somente pelo proprietario, na casinha no estacionamento proximo a entrada dos blocos A e B.</span>
+        <strong style={{ whiteSpace: 'nowrap', fontSize: '14px' }}>RETIRADA APENAS PELOS DONOS</strong>
+        <span style={{ fontSize: '14px' }}>Itens encontrados podem ser retirados somente pelo proprietario, na casinha no estacionamento proximo a entrada dos blocos A e B.</span>
       </article>
       <div className="lost-found-search">
         <SearchIcon />

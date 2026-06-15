@@ -342,7 +342,6 @@ export function ModerationView({
                   <span>{item.author}</span>
                   <span className={`status-pill status-${slugifyStatus(item.status)}`}>{item.status}</span>
                   
-                  {/* MODIFICADO PARA ÍCONES: Fila de Aprovação */}
                   <div className="row-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                     {item.status !== 'Aprovado' && (
                       <button type="button" title="Aprovar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#15803d' }} onClick={() => onModerate('Aprovado', item)}>
@@ -373,7 +372,6 @@ export function ModerationView({
                   <span>{item.zone}</span>
                   <span>{item.author}</span>
                   
-                  {/* MODIFICADO PARA ÍCONES: Caronas */}
                   <div className="row-actions" style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '8px', justifyContent: 'center' }}>
                     <button type="button" title="Revisar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }} onClick={() => void handleReviewRide(item)}>
                       <EyeIcon />
@@ -390,9 +388,23 @@ export function ModerationView({
 
         <aside className="moderation-side">
           <section className="moderation-card">
-            <div className="moderation-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div><h3>Achados e Perdidos</h3></div>
-              <button type="button" className="primary-button" style={{ padding: '6px 12px', fontSize: '13px' }} onClick={onOpenLostItemModal}>
+            <div className="moderation-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div><h3 style={{ margin: 0 }}>Achados e Perdidos</h3></div>
+             <button 
+                type="button" 
+                className="primary-button" 
+                style={{ 
+                  padding: '6px 0', 
+                  fontSize: '13px', 
+                  width: '140px', 
+                  margin: '0 14px 0 0', /* <-- O segredo está aqui: 14px de margem à direita */
+                  display: 'flex', 
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: 'fit-content'
+                }} 
+                onClick={onOpenLostItemModal}
+              >
                 Registrar Item
               </button>
             </div>
@@ -401,12 +413,50 @@ export function ModerationView({
                 <article key={item.id} className="lost-admin-item">
                   <div><strong>{item.title}</strong><small>{item.date}</small></div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-                    <button type="button" className="status-pill status-success" style={{ cursor: 'pointer', border: 'none', margin: 0 }} onClick={() => onMarkLostItemRecovered(item)}>
+                    
+              
+                    <button 
+                      type="button" 
+                      className="status-pill status-success" 
+                      style={{ 
+                        cursor: 'pointer', 
+                        border: '1px solid #15803d', 
+                        margin: 0, 
+                        width: '140px',
+                        padding: '4px 0', 
+                        display: 'flex', 
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        height: 'fit-content'
+                      }} 
+                      onClick={() => onMarkLostItemRecovered(item)}
+                    >
                       Marcar recuperado
                     </button>
-                    <button type="button" style={{ margin: 0, padding: '4px 12px', fontSize: '13px', cursor: 'pointer', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '6px', color: '#475569' }} onClick={() => void handleConsultarItem(item)}>
+
+                    <button 
+                      type="button" 
+                      style={{ 
+                        margin: 0, 
+                        padding: '4px 0', 
+                        fontSize: '13px', 
+                        cursor: 'pointer', 
+                        backgroundColor: '#ffffff', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '6px', 
+                        color: '#475569',
+                        width: '140px',
+                        display: 'flex', 
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        fontWeight: 'bold',
+                        height: 'fit-content'
+                      }} 
+                      onClick={() => void handleConsultarItem(item)}
+                    >
                       Ver detalhes
                     </button>
+
                   </div>
                 </article>
               ))}
@@ -428,7 +478,6 @@ export function ModerationView({
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <small style={{ color: '#94a3b8' }}>{report.createdAt}</small>
                     
-                    {/* MODIFICADO PARA ÍCONES: Segurança */}
                     <div className="row-actions" style={{ display: 'flex', gap: '8px' }}>
                       <button type="button" title="Revisar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }} onClick={() => void handleReviewReport(report)}>
                         <EyeIcon />
