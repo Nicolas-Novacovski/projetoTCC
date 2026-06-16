@@ -105,6 +105,7 @@ function App() {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false)
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [clearedNotificationIds, setClearedNotificationIds] = useState<string[]>([])
   const [accessibilitySettings, setAccessibilitySettings] = useState<AccessibilitySettings>(defaultAccessibilitySettings)
   
   const [itemParaExcluir, setItemParaExcluir] = useState<ModerationPost | null>(null);
@@ -1008,7 +1009,7 @@ function App() {
     { label: 'Banco', icon: GridIcon, view: 'database' as PageView, visible: sessionUser.role === 'admin' },
   ].filter((item) => item.visible)
 
-  const notifications = [
+  const rawNotifications = [
     !careerProfile.contactEmail || !careerProfile.course || !careerProfile.desiredArea
       ? {
           id: 'career-profile',
@@ -1061,6 +1062,8 @@ function App() {
 
   ].filter((item): item is { id: string; title: string; detail: string; tone: 'info' | 'warning' | 'success' } => Boolean(item))
 
+  
+  const notifications = rawNotifications.filter(item => !clearedNotificationIds.includes(item.id))
   return (
     <>
       <AuthenticatedLayout
@@ -1086,7 +1089,10 @@ function App() {
           const lidas = JSON.parse(localStorage.getItem('notificacoesLidas') || '[]')
           const novasLidas = Array.from(new Set([...lidas, ...aprovados]))
           localStorage.setItem('notificacoesLidas', JSON.stringify(novasLidas))
-
+          setClearedNotificationIds(current => {
+             const newIds = notifications.map(n => n.id)
+             return Array.from(new Set([...current, ...newIds]))
+          })
           setIsNotificationsOpen(false)
           void refreshAppData()
         }}

@@ -84,11 +84,11 @@ export function showWhatsAppContactModal({
         </div>
         <h2 class="whatsapp-modal-heading">${safeTitle}</h2>
         <div class="whatsapp-modal-card">
-          <div class="whatsapp-modal-hero">
-            <span class="whatsapp-modal-hero-icon">${renderWhatsAppIconMarkup()}</span>
-            <div>
-              <strong>${safePersonName}</strong>
-              <span>${safePhone}</span>
+          <div class="whatsapp-modal-hero" style="display: flex; align-items: center; gap: 16px;">
+            <span class="whatsapp-modal-hero-icon" style="display: flex; flex-shrink: 0;">${renderWhatsAppIconMarkup()}</span>
+            <div style="display: flex; flex-direction: column; justify-content: center;">
+              <strong style="line-height: 1.2;">${safePersonName}</strong>
+              <span style="line-height: 1.2; margin-top: 4px;">${safePhone}</span>
             </div>
           </div>
           <div class="whatsapp-modal-detail">
