@@ -85,7 +85,6 @@ export type RideForm = {
   zone: string
   title: string
   departureTime: string
-  seats: string
   meetingPoint: string
   vehicle: string
   whatsapp: string

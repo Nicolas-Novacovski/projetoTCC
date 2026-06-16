@@ -123,7 +123,6 @@ function App() {
     zone: '',
     title: '',
     departureTime: '',
-    seats: '',
     meetingPoint: '',
     vehicle: '',
     whatsapp: '',
@@ -810,7 +809,6 @@ function App() {
       !rideForm.zone ||
       !rideForm.title.trim() ||
       !rideForm.departureTime ||
-      !rideForm.seats.trim() ||
       !rideForm.meetingPoint.trim() ||
       !rideForm.vehicle.trim() ||
       !rideForm.whatsapp.trim() ||
@@ -826,9 +824,14 @@ function App() {
     }
 
     try {
+      const ridePayload = {
+        ...rideForm,
+        seats: 'Nao informado',
+      }
+
       const response = await requestJson<{ data: AppData }>(editingRideId ? `/api/rides/${editingRideId}` : '/api/rides', {
         method: editingRideId ? 'PATCH' : 'POST',
-        body: JSON.stringify({ userId: sessionUser.id, ...rideForm }),
+        body: JSON.stringify({ userId: sessionUser.id, ...ridePayload }),
       })
 
       setAppData(response.data)
@@ -838,7 +841,6 @@ function App() {
         zone: '',
         title: '',
         departureTime: '',
-        seats: '',
         meetingPoint: '',
         vehicle: '',
         whatsapp: '',
@@ -862,7 +864,6 @@ function App() {
       zone: '',
       title: '',
       departureTime: '',
-      seats: '',
       meetingPoint: '',
       vehicle: '',
       whatsapp: '',
@@ -877,7 +878,6 @@ function App() {
       zone: ride.zone,
       title: ride.title,
       departureTime: ride.time.replace(/^Saida\s+/i, '').trim(),
-      seats: ride.seats,
       meetingPoint: ride.meeting,
       vehicle: ride.vehicle,
       whatsapp: ride.whatsapp,

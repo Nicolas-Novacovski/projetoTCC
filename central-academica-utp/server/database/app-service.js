@@ -28,6 +28,7 @@ const importantDeadlines = [
 const secretaryEmail = 'secretaria@utp.br'
 const lostItemOpenStatus = 'Perdido'
 const lostItemRecoveredStatus = 'Recuperado'
+const rideSeatsPlaceholder = 'Nao informado'
 
 const weekdayOrder = ['Segunda', 'Terca', 'Quarta', 'Quinta', 'Sexta']
 
@@ -627,6 +628,7 @@ export async function createRide({
 }) {
   const pool = await connectToDatabase()
   const normalizedWeekdays = normalizeWeekdays(weekdays)
+  const normalizedSeats = String(seats || rideSeatsPlaceholder).trim() || rideSeatsPlaceholder
 
   if (!normalizedWeekdays.length) {
     throw new Error('Selecione pelo menos um dia da semana para a carona.')
@@ -649,7 +651,7 @@ export async function createRide({
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Ativa')
       returning id_carona
     `,
-    [userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
+    [userId, zone, title, departureTime, normalizedSeats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
   )
 
   await recordAuditLog({
@@ -657,7 +659,7 @@ export async function createRide({
     action: 'CARONA_CRIADA',
     entity: 'caronas',
     entityId: result.rows[0]?.id_carona,
-    detail: { zone, title, departureTime, seats, weekdays: normalizedWeekdays },
+    detail: { zone, title, departureTime, weekdays: normalizedWeekdays },
   })
 
   return getAppData(userId, 'student')
@@ -801,6 +803,7 @@ export async function updateRide({
 }) {
   const pool = await connectToDatabase()
   const normalizedWeekdays = normalizeWeekdays(weekdays)
+  const normalizedSeats = String(seats || rideSeatsPlaceholder).trim() || rideSeatsPlaceholder
 
   if (!normalizedWeekdays.length) {
     throw new Error('Selecione pelo menos um dia da semana para a carona.')
@@ -821,7 +824,7 @@ export async function updateRide({
         and id_motorista = $2
       returning id_carona
     `,
-    [rideId, userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
+    [rideId, userId, zone, title, departureTime, normalizedSeats, meetingPoint, vehicle, whatsapp, normalizedWeekdays],
   )
 
   if (!result.rowCount) {
@@ -833,7 +836,7 @@ export async function updateRide({
     action: 'CARONA_ATUALIZADA',
     entity: 'caronas',
     entityId: rideId,
-    detail: { zone, title, departureTime, seats, weekdays: normalizedWeekdays },
+    detail: { zone, title, departureTime, weekdays: normalizedWeekdays },
   })
 
   return getAppData(userId, 'student')

@@ -43,7 +43,6 @@ export function ModerationView({
       title: r.title,
       zone: r.zone,
       author: (r as any).driverName || (r as any).driver || 'Aluno',
-      seats: r.seats,
       time: r.time,
       raw: r,
     })),
@@ -53,7 +52,6 @@ export function ModerationView({
       title: 'Buscando carona',
       zone: r.zone,
       author: (r as any).requesterName || 'Aluno',
-      seats: '-',
       time: '-',
       raw: r,
     })),
@@ -129,10 +127,6 @@ export function ModerationView({
               <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
                 <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Veículo</span>
                 <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.vehicle || 'Não informado'}</strong>
-              </div>
-              <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
-                <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Vagas Disponíveis</span>
-                <strong style="color: #163a54; font-size: 14px; display: block; margin-top: 4px;">${ride.seats}</strong>
               </div>
               <div style="background: #f7fafc; padding: 12px; border-radius: 8px;">
                 <span style="display: block; font-size: 11px; color: #708d9f; font-weight: bold; text-transform: uppercase;">Horário de Saída</span>
@@ -503,3 +497,5 @@ export function ModerationView({
     </section>
   )
 }
+
+

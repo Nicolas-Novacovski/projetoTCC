@@ -204,6 +204,28 @@
     background-color 0.2s ease;
 }
 
+.form-field select,
+.publish-form select,
+.swal2-select {
+  min-height: 48px;
+  padding-right: 42px;
+  appearance: none;
+  background-color: #f8fbfd;
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.25 6.25L8 10L11.75 6.25' stroke='%23315e78' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: calc(100% - 16px) 50%;
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  color-scheme: light;
+  cursor: pointer;
+}
+
+.form-field select:hover,
+.publish-form select:hover,
+.swal2-select:hover {
+  border-color: #b8d2e0;
+  background-color: #ffffff;
+}
+
 .form-field input:focus {
   border-color: #3895bd;
   box-shadow: 0 0 0 4px rgba(56, 149, 189, 0.14);
@@ -214,7 +236,32 @@
 .form-field textarea:focus {
   border-color: #3895bd;
   box-shadow: 0 0 0 4px rgba(56, 149, 189, 0.14);
+  background-color: #ffffff;
+}
+
+.form-field select:focus,
+.publish-form select:focus,
+.swal2-select:focus {
+  border-color: #6ab0cf;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.25 6.25L8 10L11.75 6.25' stroke='%231f7fa8' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: calc(100% - 16px) 50%;
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+}
+
+.form-field select option,
+.publish-form select option,
+.swal2-select option {
   background: #ffffff;
+  color: #17384a;
+}
+
+.form-field select option:checked,
+.publish-form select option:checked,
+.swal2-select option:checked {
+  background: #e8f4fa;
+  color: #12334e;
 }
 
 .login-error {
@@ -4003,6 +4050,8 @@ body.accessibility-high-contrast :where(.form-field textarea, .publish-form text
 }
 
 body.accessibility-high-contrast :where(.form-field select, .publish-form select) {
+  appearance: auto !important;
+  background-image: none !important;
   color-scheme: dark !important;
 }
 

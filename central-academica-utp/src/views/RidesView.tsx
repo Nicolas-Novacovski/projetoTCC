@@ -295,7 +295,7 @@ export function RidesView({
             <strong>Solicitar carona</strong>
           </button>
           <button className="ride-hero-button ride-hero-button-secondary" type="button" onClick={onOpenRideModal}>
-            <span className="ride-hero-button-label">Tenho vagas no carro</span>
+            <span className="ride-hero-button-label">Vou de carro ao campus</span>
             <strong>Oferecer carona</strong>
           </button>
         </div>
@@ -331,7 +331,7 @@ export function RidesView({
               <article key={ride.id} className="ride-card ride-card-enhanced">
                 <div className="ride-card-header">
                   <div><h3>{ride.title}</h3><p>{ride.driver}</p></div>
-                  <span className="ride-badge">{ride.status === 'Ativa' ? ride.seats : ride.status}</span>
+                  <span className="ride-badge">{ride.status}</span>
                 </div>
                 <div className="ride-meta-grid">
                   <div><span className="ride-meta-label">Saida</span><strong>{ride.time}</strong></div>
@@ -350,7 +350,15 @@ export function RidesView({
                 </div>
                 {ride.driverId === currentUserId ? (
                   <div className="row-actions">
-                    <button type="button" onClick={() => onEditRide(ride)}>Editar oferta</button>
+                    <button
+                      className="inline-icon-button inline-icon-button-neutral"
+                      type="button"
+                      aria-label={`Editar oferta de carona ${ride.title}`}
+                      title="Editar oferta"
+                      onClick={() => onEditRide(ride)}
+                    >
+                      <PencilIcon />
+                    </button>
                     <button type="button" onClick={() => void handleCloseRide(ride)}>Encerrar vaga</button>
                   </div>
                 ) : (
@@ -442,7 +450,6 @@ export function RidesView({
                       type="button"
                       aria-label={`Editar pedido de carona para ${request.zone}`}
                       onClick={() => handleStartRequestEdit(request)}
-                      disabled={request.status !== 'Aberto'}
                     >
                       <PencilIcon />
                     </button>

@@ -217,7 +217,7 @@ router.post('/lost-items', async (request, response) => {
 router.post('/rides', async (request, response) => {
   const { userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, weekdays } = request.body
 
-  if (!userId || !zone || !title || !departureTime || !seats || !meetingPoint || !vehicle || !whatsapp || !Array.isArray(weekdays) || weekdays.length === 0) {
+  if (!userId || !zone || !title || !departureTime || !meetingPoint || !vehicle || !whatsapp || !Array.isArray(weekdays) || weekdays.length === 0) {
     return response.status(400).json({
       status: 'error',
       message: 'Campos obrigatorios da carona nao enviados.',
@@ -289,7 +289,7 @@ router.patch('/rides/:id', async (request, response) => {
   const rideId = Number(request.params.id)
   const { userId, zone, title, departureTime, seats, meetingPoint, vehicle, whatsapp, weekdays } = request.body
 
-  if (!rideId || !userId || !zone || !title || !departureTime || !seats || !meetingPoint || !vehicle || !whatsapp || !Array.isArray(weekdays) || weekdays.length === 0) {
+  if (!rideId || !userId || !zone || !title || !departureTime || !meetingPoint || !vehicle || !whatsapp || !Array.isArray(weekdays) || weekdays.length === 0) {
     return response.status(400).json({
       status: 'error',
       message: 'Dados invalidos para editar a carona.',

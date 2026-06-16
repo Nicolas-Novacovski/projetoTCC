@@ -57,16 +57,10 @@ export function RideModal({ rideForm, onClose, onSubmit, onChange, mode = 'creat
             <span>Titulo da rota <em className="required-marker">*</em></span>
             <input type="text" placeholder="Ex.: Boqueirao -> Campus UTP" value={rideForm.title} onChange={(event) => onChange((current) => ({ ...current, title: event.target.value }))} />
           </label>
-          <div className="publish-grid">
-            <label className="form-field">
-              <span>Vagas <em className="required-marker">*</em></span>
-              <input type="text" placeholder="Ex.: 3 vagas" value={rideForm.seats} onChange={(event) => onChange((current) => ({ ...current, seats: event.target.value }))} />
-            </label>
-            <label className="form-field">
-              <span>Endereco <em className="required-marker">*</em></span>
-              <input type="text" placeholder="Ex.: Rua Joao Negrrao, 120" value={rideForm.meetingPoint} onChange={(event) => onChange((current) => ({ ...current, meetingPoint: event.target.value }))} />
-            </label>
-          </div>
+          <label className="form-field">
+            <span>Endereco <em className="required-marker">*</em></span>
+            <input type="text" placeholder="Ex.: Rua Joao Negrao, 120" value={rideForm.meetingPoint} onChange={(event) => onChange((current) => ({ ...current, meetingPoint: event.target.value }))} />
+          </label>
           <label className="form-field">
             <span>WhatsApp do motorista <em className="required-marker">*</em></span>
             <input type="text" placeholder="Ex.: (41) 99999-1234" value={rideForm.whatsapp} onChange={(event) => onChange((current) => ({ ...current, whatsapp: formatPhoneInput(event.target.value) }))} />
