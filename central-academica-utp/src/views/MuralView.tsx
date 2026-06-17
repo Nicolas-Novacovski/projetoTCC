@@ -261,9 +261,6 @@ export function MuralView({
                 <span className="detail-label">Dica</span>
                 <strong>Organize os documentos antes do prazo para evitar retrabalho na secretaria.</strong>
               </div>
-              <button className="primary-button" type="button" onClick={() => setSelectedDeadline(null)}>
-                Marcar como visto
-              </button>
             </div>
           </div>
         </div>

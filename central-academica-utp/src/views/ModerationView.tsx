@@ -391,7 +391,7 @@ export function ModerationView({
                   padding: '6px 0', 
                   fontSize: '13px', 
                   width: '140px', 
-                  margin: '0 14px 0 0', /* <-- O segredo está aqui: 14px de margem à direita */
+                  margin: '0 14px 0 0', 
                   display: 'flex', 
                   justifyContent: 'center',
                   alignItems: 'center',

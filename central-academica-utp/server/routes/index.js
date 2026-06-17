@@ -504,8 +504,7 @@ router.put('/career-profile/:userId', async (request, response) => {
 
     const dadosLimpos = { ...request.body }
     
-    // Limpeza agressiva: varre todos os campos em busca de "Nao informado", 
-    // "Selecione", "null" ou vazios, e converte para um null real que o banco aceita.
+    
     Object.keys(dadosLimpos).forEach(key => {
       if (typeof dadosLimpos[key] === 'string') {
         const valorOriginal = dadosLimpos[key].trim()

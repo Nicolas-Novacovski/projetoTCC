@@ -39,7 +39,7 @@ async function bootstrap() {
     const { id_usuario } = req.params;
     
     try {
-        // Busca as publicações DESTE usuário que estão com status Aprovado
+        
         const resultado = await db.query(
             `SELECT id_publicacao, titulo, status_moderacao 
              FROM publicacoes_mural 
