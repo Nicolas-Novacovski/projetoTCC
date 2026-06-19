@@ -437,7 +437,13 @@
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
   width: 272px;
+  height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: linear-gradient(180deg, #3583a6 0%, #3789ad 100%);
   color: #f5fbff;
   padding: 14px 8px 20px;
@@ -3811,6 +3817,9 @@
 
   .sidebar,
   .sidebar-collapsed .sidebar {
+    position: static;
+    height: auto;
+    overflow-y: visible;
     width: 100%;
     padding-left: 8px;
     padding-right: 8px;
