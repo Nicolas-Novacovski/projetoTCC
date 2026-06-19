@@ -1,7 +1,8 @@
 import Swal from 'sweetalert2'
+import type { CSSProperties } from 'react'
 import { showFeatureAlert } from '../lib/alerts'
 import { slugifyStatus } from '../lib/navigation'
-import type { DashboardStats, LostItem, ModerationPost, PostStatus, Report, RideOffer } from '../types/app'
+import type { DashboardStats, LostItem, ModerationPost, PostStatus, Report, RideOffer, RideRequest } from '../types/app'
 import { requestJson } from '../lib/http'
 import { CheckIcon, EyeIcon, TrashIcon } from '../components/icons'
 
@@ -11,7 +12,7 @@ type ModerationViewProps = {
   dashboard: DashboardStats
   lostItems: LostItem[]
   rides: RideOffer[]
-  rideRequests: any[] 
+  rideRequests: RideRequest[]
   onRefresh: () => void
   onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) => void
   onMarkLostItemRecovered: (item: LostItem) => void
@@ -35,6 +36,39 @@ export function ModerationView({
   onOpenLostItemModal,
 }: ModerationViewProps) {
   const approvedCount = moderationQueue.filter((item) => item.status === 'Aprovado').length
+  const reviewCount = moderationQueue.filter((item) => item.status === 'Revisao').length
+  const pendingCount = moderationQueue.filter((item) => item.status === 'Pendente').length
+  const openReportsCount = reports.filter((report) => report.status === 'Aberta').length
+  const resolvedReportsCount = reports.filter((report) => report.status === 'Resolvida').length
+  const activeRidesCount = rides.filter((ride) => ride.status === 'Ativa').length
+  const openRideRequestsCount = rideRequests.filter((request) => request.status === 'Aberto').length
+  const acceptedRideRequestsCount = rideRequests.filter((request) => request.status === 'Aceito').length
+  const emailDeliveryRate = dashboard.jobInterestsCount > 0
+    ? Math.round((dashboard.sentEmailsCount / dashboard.jobInterestsCount) * 100)
+    : 0
+  const moderationTotal = Math.max(moderationQueue.length, 1)
+  const approvedPercentage = Math.round((approvedCount / moderationTotal) * 100)
+  const reviewPercentage = Math.round((reviewCount / moderationTotal) * 100)
+  const pendingPercentage = moderationQueue.length > 0
+    ? Math.max(100 - approvedPercentage - reviewPercentage, 0)
+    : 0
+  const approvedAngle = (approvedCount / moderationTotal) * 360
+  const reviewAngle = approvedAngle + (reviewCount / moderationTotal) * 360
+  const operationalBacklog = pendingCount + reviewCount + openReportsCount
+  const operationRows = [
+    { label: 'Publicacoes no mural', value: moderationQueue.length, tone: 'blue' },
+    { label: 'Ofertas de carona', value: activeRidesCount, tone: 'green' },
+    { label: 'Pedidos de carona', value: openRideRequestsCount, tone: 'amber' },
+    { label: 'Achados e perdidos', value: lostItems.length, tone: 'cyan' },
+  ]
+  const operationMax = Math.max(...operationRows.map((item) => item.value), 1)
+  const categoryCounts = moderationQueue.reduce<Record<string, number>>((counts, item) => {
+    counts[item.category] = (counts[item.category] ?? 0) + 1
+    return counts
+  }, {})
+  const topCategories = Object.entries(categoryCounts)
+    .sort(([, left], [, right]) => right - left)
+    .slice(0, 4)
 
   const combinedRides = [
     ...rides.map((r) => ({
@@ -314,11 +348,131 @@ export function ModerationView({
         </button>
       </div>
       
-      <div className="moderation-overview">
-        <article className="overview-card"><span>Em analise</span><strong>{dashboard.pendingModerationCount}</strong><p>Publicacoes aguardando revisao.</p></article>
-        <article className="overview-card"><span>Denuncias</span><strong>{dashboard.reportsCount}</strong><p>Ocorrencias abertas.</p></article>
-        <article className="overview-card"><span>Aprovadas</span><strong>{approvedCount}</strong><p>Itens liberados.</p></article>
-      </div>
+      <section className="admin-dashboard" aria-label="Resumo operacional da administracao">
+        <div className="admin-kpi-grid">
+          <article className="admin-kpi">
+            <span>Pendencias operacionais</span>
+            <strong>{operationalBacklog}</strong>
+            <p>{pendingCount + reviewCount} no mural e {openReportsCount} denuncia(s) aberta(s).</p>
+          </article>
+          <article className="admin-kpi">
+            <span>Mobilidade ativa</span>
+            <strong>{activeRidesCount + openRideRequestsCount}</strong>
+            <p>{activeRidesCount} oferta(s) e {openRideRequestsCount} pedido(s) aguardando atendimento.</p>
+          </article>
+          <article className="admin-kpi">
+            <span>Interesses em vagas</span>
+            <strong>{dashboard.jobInterestsCount}</strong>
+            <p>{dashboard.sentEmailsCount} e-mail(s) encaminhado(s) aos estudantes.</p>
+          </article>
+          <article className="admin-kpi">
+            <span>Itens recuperados</span>
+            <strong>{dashboard.recoveredLostItemsCount}</strong>
+            <p>{lostItems.length} registro(s) ainda ativos em achados e perdidos.</p>
+          </article>
+        </div>
+
+        <div className="admin-dashboard-grid">
+          <article className="admin-dashboard-panel">
+            <div className="admin-dashboard-heading">
+              <div>
+                <span>Moderacao do mural</span>
+                <h3>Situacao das publicacoes</h3>
+              </div>
+            </div>
+            <div className="admin-publication-chart">
+              <div
+                className={`admin-donut-chart${moderationQueue.length === 0 ? ' is-empty' : ''}`}
+                style={{
+                  '--approved-angle': `${approvedAngle}deg`,
+                  '--review-angle': `${reviewAngle}deg`,
+                } as CSSProperties}
+                role="img"
+                aria-label={`${approvedCount} aprovadas, ${reviewCount} em revisao e ${pendingCount} pendentes`}
+              >
+                <div className="admin-donut-center">
+                  <strong>{moderationQueue.length}</strong>
+                  <span>publicacoes</span>
+                </div>
+              </div>
+              <div className="admin-chart-legend">
+                <div>
+                  <span className="admin-status-dot is-approved" />
+                  <div><span>Aprovadas</span><small>{approvedPercentage}% do total</small></div>
+                  <strong>{approvedCount}</strong>
+                </div>
+                <div>
+                  <span className="admin-status-dot is-review" />
+                  <div><span>Em revisao</span><small>{reviewPercentage}% do total</small></div>
+                  <strong>{reviewCount}</strong>
+                </div>
+                <div>
+                  <span className="admin-status-dot is-pending" />
+                  <div><span>Pendentes</span><small>{pendingPercentage}% do total</small></div>
+                  <strong>{pendingCount}</strong>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article className="admin-dashboard-panel">
+            <div className="admin-dashboard-heading">
+              <div>
+                <span>Volume por area</span>
+                <h3>Operacao do portal</h3>
+              </div>
+            </div>
+            <div className="admin-volume-list">
+              {operationRows.map((item) => (
+                <div key={item.label} className="admin-volume-row">
+                  <div><span>{item.label}</span><strong>{item.value}</strong></div>
+                  <div className="admin-volume-track">
+                    <span className={`is-${item.tone}`} style={{ width: `${(item.value / operationMax) * 100}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="admin-dashboard-panel admin-email-panel">
+            <div className="admin-dashboard-heading">
+              <div>
+                <span>Oportunidades</span>
+                <h3>Entrega de e-mails</h3>
+              </div>
+            </div>
+            <div className="admin-email-content">
+              <div
+                className="admin-rate-ring"
+                style={{ '--rate': `${emailDeliveryRate * 3.6}deg` } as CSSProperties}
+                aria-label={`${emailDeliveryRate}% dos interesses tiveram e-mail enviado`}
+              >
+                <div><strong>{emailDeliveryRate}%</strong><span>entregues</span></div>
+              </div>
+              <div className="admin-email-summary">
+                <div><span>Interesses registrados</span><strong>{dashboard.jobInterestsCount}</strong></div>
+                <div><span>E-mails enviados</span><strong>{dashboard.sentEmailsCount}</strong></div>
+                <div><span>Pendentes ou com falha</span><strong>{Math.max(dashboard.jobInterestsCount - dashboard.sentEmailsCount, 0)}</strong></div>
+              </div>
+            </div>
+          </article>
+
+          <article className="admin-dashboard-panel">
+            <div className="admin-dashboard-heading">
+              <div>
+                <span>Leitura rapida</span>
+                <h3>Atencao administrativa</h3>
+              </div>
+            </div>
+            <div className="admin-attention-list">
+              <div><span>Denuncias abertas</span><strong>{openReportsCount}</strong><small>{resolvedReportsCount} resolvida(s)</small></div>
+              <div><span>Pedidos aceitos</span><strong>{acceptedRideRequestsCount}</strong><small>de {rideRequests.length} pedido(s)</small></div>
+              <div><span>Caronas encerradas</span><strong>{dashboard.closedRidesCount}</strong><small>historico operacional</small></div>
+              <div><span>Categoria em destaque</span><strong>{topCategories[0]?.[0] ?? 'Sem dados'}</strong><small>{topCategories[0]?.[1] ?? 0} publicacao(oes)</small></div>
+            </div>
+          </article>
+        </div>
+      </section>
       
       <div className="moderation-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
