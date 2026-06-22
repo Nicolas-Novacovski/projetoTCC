@@ -97,7 +97,8 @@ async function ensureDatabaseSchema(pool) {
       categoria varchar(60) not null,
       descricao text not null,
       encontrado_por varchar(120) not null,
-      contato_retirada varchar(160) not null default 'secretaria@utp.br'
+      contato_retirada varchar(160) not null default 'secretaria@utp.br',
+      data_criacao timestamptz not null default now()
     )
   `)
 
@@ -151,6 +152,12 @@ async function ensureDatabaseSchema(pool) {
   await pool.query(`alter table usuarios add column if not exists nome varchar(120)`)
   await pool.query(`alter table usuarios add column if not exists data_criacao timestamp without time zone not null default now()`)
   await pool.query(`alter table publicacoes_mural add column if not exists email_contato varchar(160)`)
+  await pool.query(`alter table publicacoes_mural drop constraint if exists publicacoes_mural_status_moderacao_check`)
+  await pool.query(`
+    alter table publicacoes_mural
+    add constraint publicacoes_mural_status_moderacao_check
+    check (status_moderacao in ('Pendente', 'Aprovado', 'Revisao', 'Recusado'))
+  `)
   await pool.query(`alter table perfis_profissionais add column if not exists email_contato varchar(160)`)
   await pool.query(`alter table perfis_profissionais add column if not exists area_desejada varchar(120)`)
   await pool.query(`alter table perfis_profissionais add column if not exists pretensao_salarial varchar(80)`)
@@ -173,6 +180,7 @@ async function ensureDatabaseSchema(pool) {
   await pool.query(`alter table pedidos_caronas add column if not exists dias_semana text[]`)
   await pool.query(`alter table caronas alter column dias_semana drop not null`)
   await pool.query(`alter table pedidos_caronas alter column dias_semana drop not null`)
+  await pool.query(`alter table achados_perdidos add column if not exists data_criacao timestamptz not null default now()`)
   await pool.query(`alter table achados_perdidos alter column status_item set default 'Perdido'`)
   await pool.query(`alter table achados_perdidos alter column contato_retirada set default 'secretaria@utp.br'`)
 

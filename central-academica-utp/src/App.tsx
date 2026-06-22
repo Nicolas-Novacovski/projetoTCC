@@ -15,6 +15,7 @@ import {
   BriefcaseIcon,
   CarIcon,
   GridIcon,
+  LogsIcon,
   SearchIcon,
   ShieldIcon,
   UserCardIcon,
@@ -27,7 +28,7 @@ import { ModerationView } from './views/ModerationView'
 import { MuralView } from './views/MuralView'
 import { RidesView } from './views/RidesView'
 import type {
-  AdminDatabaseSnapshot,
+  AdminLogsSnapshot,
   AppData,
   AppUser,
   CareerProfile,
@@ -99,7 +100,7 @@ function App() {
   const [isRideModalOpen, setIsRideModalOpen] = useState(false)
   const [isLostItemModalOpen, setIsLostItemModalOpen] = useState(false)
   const [editingRideId, setEditingRideId] = useState<number | null>(null)
-  const [adminSnapshot, setAdminSnapshot] = useState<AdminDatabaseSnapshot | null>(null)
+  const [adminSnapshot, setAdminSnapshot] = useState<AdminLogsSnapshot | null>(null)
   const [appliedPostIds, setAppliedPostIds] = useState<number[]>([])
   const [isLoadingSnapshot, setIsLoadingSnapshot] = useState(false)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
@@ -187,9 +188,17 @@ function App() {
     if (storedAppData) {
       try {
         const parsedData = JSON.parse(storedAppData) as AppData
-        setAppData(parsedData)
-        setCareerProfile(parsedData.careerProfile)
-        setAppliedPostIds(parsedData.appliedPostIds ?? [])
+        const cacheBelongsToSession =
+          Number(parsedData.user?.id) === Number(parsedSession.id) &&
+          parsedData.user?.role === parsedSession.role
+
+        if (cacheBelongsToSession) {
+          setAppData(parsedData)
+          setCareerProfile(parsedData.careerProfile)
+          setAppliedPostIds(parsedData.appliedPostIds ?? [])
+        } else {
+          window.localStorage.removeItem(APP_DATA_STORAGE_KEY)
+        }
       } catch {
         window.localStorage.removeItem(APP_DATA_STORAGE_KEY)
       }
@@ -263,6 +272,13 @@ function App() {
       return
     }
 
+    if (
+      Number(appData.user?.id) !== Number(sessionUser.id) ||
+      appData.user?.role !== sessionUser.role
+    ) {
+      return
+    }
+
     window.localStorage.setItem(APP_DATA_STORAGE_KEY, JSON.stringify(appData))
   }, [appData, sessionUser])
 
@@ -314,6 +330,7 @@ function App() {
           body: JSON.stringify({ mode: 'student', ra: normalizedRa, birthDate }),
         })
 
+        window.localStorage.removeItem(APP_DATA_STORAGE_KEY)
         setSessionUser(response.user)
         setAppData(response.data)
         setCareerProfile(response.data.careerProfile)
@@ -329,6 +346,7 @@ function App() {
           body: JSON.stringify({ mode: 'admin', login: adminLogin, password: adminPassword }),
         })
 
+        window.localStorage.removeItem(APP_DATA_STORAGE_KEY)
         setSessionUser(response.user)
         setAppData(response.data)
         setCareerProfile(response.data.careerProfile)
@@ -363,6 +381,8 @@ function App() {
 
     setSessionUser(null)
     setAppData(null)
+    setAdminSnapshot(null)
+    setAppliedPostIds([])
     setCareerProfile(emptyCareerProfile)
     setIsSidebarOpen(true)
     setCurrentView('mural')
@@ -526,7 +546,7 @@ function App() {
     }
   }
 
-  async function handleModerationAction(status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) {
+  async function handleModerationAction(status: Extract<PostStatus, 'Aprovado' | 'Revisao' | 'Recusado'>, item: ModerationPost) {
     if (!sessionUser) return
 
     try {
@@ -577,6 +597,13 @@ function App() {
             </div>
           `,
           confirmButtonText: 'Fechar',
+        })
+      } else if (status === 'Recusado') {
+        await Swal.fire({
+          icon: 'info',
+          title: 'Publicação recusada',
+          text: 'O autor poderá acompanhar esse status na área de suas publicações.',
+          confirmButtonText: 'Ok',
         })
       } else {
         await Swal.fire({
@@ -893,7 +920,6 @@ function App() {
     if (
       !lostItemForm.title.trim() ||
       !lostItemForm.place.trim() ||
-      !lostItemForm.date.trim() ||
       !lostItemForm.category.trim() ||
       !lostItemForm.description.trim() ||
       !lostItemForm.foundBy.trim()
@@ -937,19 +963,27 @@ function App() {
     setIsLoadingSnapshot(true)
 
     try {
-      const response = await requestJson<{ status: string; data: AdminDatabaseSnapshot }>(
-        `/api/admin/database-snapshot?userId=${user.id}`,
+      const response = await requestJson<{ status: string; data: AdminLogsSnapshot }>(
+        `/api/admin/logs?userId=${user.id}`,
       )
       setAdminSnapshot(response.data)
     } catch (error) {
       await Swal.fire({
         icon: 'error',
-        title: 'Falha ao carregar tabelas',
-        text: error instanceof Error ? error.message : 'Nao foi possivel carregar os dados do banco.',
+        title: 'Falha ao carregar logs',
+        text: error instanceof Error ? error.message : 'Nao foi possivel carregar os logs de auditoria.',
         confirmButtonText: 'Fechar',
       })
     } finally {
       setIsLoadingSnapshot(false)
+    }
+  }
+
+  function handleViewChange(view: PageView) {
+    setCurrentView(view)
+
+    if (view === 'database' && sessionUser?.role === 'admin') {
+      void loadAdminSnapshot(sessionUser)
     }
   }
 
@@ -1006,7 +1040,7 @@ function App() {
     { label: 'Perfil Profissional', icon: UserCardIcon, view: 'career' as PageView, visible: sessionUser.role === 'student' },
     { label: 'Mural', icon: BriefcaseIcon, view: 'mural' as PageView, visible: true },
     { label: 'Moderacao', icon: ShieldIcon, view: 'moderation' as PageView, visible: sessionUser.role === 'admin' },
-    { label: 'Banco', icon: GridIcon, view: 'database' as PageView, visible: sessionUser.role === 'admin' },
+    { label: 'Logs', icon: LogsIcon, view: 'database' as PageView, visible: sessionUser.role === 'admin' },
   ].filter((item) => item.visible)
 
   const rawNotifications = [
@@ -1080,7 +1114,7 @@ function App() {
         notifications={notifications}
         menuItems={menuItems}
         onToggleSidebar={() => setIsSidebarOpen((current) => !current)}
-        onChangeView={setCurrentView}
+        onChangeView={handleViewChange}
         onRefresh={() => {
           const aprovados = appData.muralPosts
             .filter((post) => post.author === sessionUser?.name && post.status === 'Aprovado')
@@ -1224,7 +1258,8 @@ function App() {
         {currentView === 'mural' ? (
           <MuralView
             userRole={sessionUser.role}
-            currentUserName={sessionUser?.name || ''}
+            currentUserId={sessionUser.id}
+            currentUserName={sessionUser.name}
             muralPosts={appData.muralPosts}
             importantDeadlines={appData.importantDeadlines}
             careerProfile={careerProfile}

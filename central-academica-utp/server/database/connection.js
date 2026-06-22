@@ -1,7 +1,11 @@
 import pg from 'pg'
 import { env } from '../config/env.js'
 
-const { Pool } = pg
+const { Pool, types } = pg
+const timestampWithoutTimeZoneOid = 1114
+
+types.setTypeParser(timestampWithoutTimeZoneOid, (value) => new Date(`${value.replace(' ', 'T')}Z`))
+
 let cachedPool = null
 
 export async function connectToDatabase() {

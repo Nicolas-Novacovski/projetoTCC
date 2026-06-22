@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react'
 export type UserRole = 'student' | 'admin'
 export type PageView = 'home' | 'rides' | 'lostFound' | 'career' | 'mural' | 'moderation' | 'database'
 export type LoginMode = 'student' | 'admin'
-export type PostStatus = 'Pendente' | 'Aprovado' | 'Revisao'
+export type PostStatus = 'Pendente' | 'Aprovado' | 'Revisao' | 'Recusado'
 
 export type AppUser = { id: number; role: UserRole; name: string }
 
@@ -73,7 +73,6 @@ export type LostItem = {
 export type LostItemForm = {
   title: string
   place: string
-  date: string
   category: string
   description: string
   foundBy: string
@@ -105,6 +104,7 @@ export type CareerProfile = {
 
 export type MuralPost = {
   id: number
+  authorId: number
   category: string
   title: string
   subtitle: string
@@ -184,20 +184,21 @@ export type AppData = {
   careerProfile: CareerProfile
 }
 
-export type AdminDatabaseSnapshot = {
-  totals: Record<string, number>
-  tables: {
-    usuarios: Array<Record<string, unknown>>
-    publicacoes_mural: Array<Record<string, unknown>>
-    caronas: Array<Record<string, unknown>>
-    solicitacoes_caronas: Array<Record<string, unknown>>
-    pedidos_caronas: Array<Record<string, unknown>>
-    candidaturas_vagas: Array<Record<string, unknown>>
-    achados_perdidos: Array<Record<string, unknown>>
-    perfis_profissionais: Array<Record<string, unknown>>
-    denuncias: Array<Record<string, unknown>>
-    logs_auditoria: Array<Record<string, unknown>>
-  }
+export type AuditLog = {
+  id_log: number
+  id_usuario: number | null
+  usuario: string
+  ra: string | null
+  acao: string
+  entidade: string
+  id_entidade: number | null
+  detalhe: Record<string, unknown> | null
+  data_criacao: string
+}
+
+export type AdminLogsSnapshot = {
+  total: number
+  logs: AuditLog[]
 }
 
 export type CareerProfileSetter = Dispatch<SetStateAction<CareerProfile>>

@@ -17,7 +17,6 @@ export const emptyCareerProfile: CareerProfile = {
 export const emptyLostItemForm: LostItemForm = {
   title: '',
   place: '',
-  date: '',
   category: 'Documentos',
   description: '',
   foundBy: '',

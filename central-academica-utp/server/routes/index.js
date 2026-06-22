@@ -8,7 +8,7 @@ import {
   createRideRequest,
   createPublication,
   deleteRideRequest,
-  getAdminDatabaseSnapshot,
+  getAdminLogs,
   getAppData,
   loginAdmin,
   loginStudent,
@@ -100,7 +100,7 @@ router.get('/app-data', async (request, response) => {
   return response.json(data)
 })
 
-router.get('/admin/database-snapshot', async (request, response) => {
+router.get('/admin/logs', async (request, response) => {
   const userId = Number(request.query.userId)
 
   if (!Number.isFinite(userId)) {
@@ -110,12 +110,12 @@ router.get('/admin/database-snapshot', async (request, response) => {
     })
   }
 
-  const data = await getAdminDatabaseSnapshot(userId)
+  const data = await getAdminLogs(userId)
   await recordAuditLog({
     userId,
-    action: 'SNAPSHOT_BANCO_CONSULTADO',
+    action: 'LOGS_AUDITORIA_CONSULTADOS',
     entity: 'logs_auditoria',
-    detail: { area: 'admin/database-snapshot' },
+    detail: { area: 'admin/logs' },
   })
 
   return response.json({
@@ -188,9 +188,9 @@ router.post('/applications', async (request, response) => {
 })
 
 router.post('/lost-items', async (request, response) => {
-  const { userId, role, title, place, date, category, description, foundBy } = request.body
+  const { userId, role, title, place, category, description, foundBy } = request.body
 
-  if (!userId || !title || !place || !date || !category || !description || !foundBy) {
+  if (!userId || !title || !place || !category || !description || !foundBy) {
     return response.status(400).json({
       status: 'error',
       message: 'Campos obrigatorios do item nao enviados.',
@@ -202,7 +202,6 @@ router.post('/lost-items', async (request, response) => {
     role: role || 'student',
     title,
     place,
-    date,
     category,
     description,
     foundBy,
@@ -455,7 +454,7 @@ router.patch('/publications/:id/status', async (request, response) => {
   const publicationId = Number(request.params.id)
   const { status, userId, role } = request.body
 
-  if (!['Pendente', 'Aprovado', 'Revisao'].includes(status)) {
+  if (!['Pendente', 'Aprovado', 'Revisao', 'Recusado'].includes(status)) {
     return response.status(400).json({
       status: 'error',
       message: 'Status de moderacao invalido.',

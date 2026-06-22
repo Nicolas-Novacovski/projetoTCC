@@ -47,6 +47,10 @@ async function ensureJobApplicationSchema(pool) {
   await pool.query(`alter table candidaturas_vagas add column if not exists status_email varchar(40) not null default 'Pendente'`)
 }
 
+async function ensureLostItemSchema(pool) {
+  await pool.query(`alter table achados_perdidos add column if not exists data_criacao timestamptz not null default now()`)
+}
+
 function normalizeWeekdays(weekdays = []) {
   if (!Array.isArray(weekdays)) {
     return []
@@ -94,12 +98,14 @@ function formatTimestamp(value) {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',
     timeStyle: 'short',
+    timeZone: 'America/Sao_Paulo',
   }).format(new Date(value))
 }
 
 function mapPublication(row) {
   return {
     id: row.id_publicacao,
+    authorId: Number(row.id_autor),
     category: row.categoria,
     title: row.titulo,
     subtitle: row.local_empresa || 'Central Academica UTP',
@@ -141,7 +147,7 @@ function mapLostItem(row) {
     id: row.id_item,
     title: row.titulo,
     place: row.local_encontrado,
-    date: row.data_hora,
+    date: formatTimestamp(row.data_criacao),
     status: row.status_item,
     category: row.categoria,
     description: row.descricao,
@@ -391,6 +397,7 @@ export async function getAppData(userId, role) {
   const pool = await connectToDatabase()
   await ensureCareerProfileSchema(pool)
   await ensureJobApplicationSchema(pool)
+  await ensureLostItemSchema(pool)
 
   const user = await getUserById(userId)
   const isAdmin = role === 'admin'
@@ -436,10 +443,10 @@ export async function getAppData(userId, role) {
             coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Estudante UTP') as autor
           from publicacoes_mural p
           left join usuarios u on u.id_usuario = p.id_autor
-          where ($1 = 'admin' or p.status_moderacao = 'Aprovado')
+          where ($1 = 'admin' or p.status_moderacao = 'Aprovado' or p.id_autor = $2)
           order by p.data_submissao desc, p.id_publicacao desc
         `,
-        [role],
+        [role, userId],
       ),
       pool.query(
         `
@@ -516,7 +523,7 @@ export async function getAppData(userId, role) {
     dashboard: {
       ridesCount: rides.filter((ride) => ride.status === 'Ativa').length,
       lostItemsCount: lostItems.length,
-      muralCount: muralPosts.length,
+      muralCount: isAdmin ? muralPosts.length : muralPosts.filter((item) => item.status === 'Aprovado').length,
       pendingModerationCount: moderationQueue.filter((item) => item.status !== 'Aprovado').length,
       reportsCount: reports.filter((item) => item.status !== 'Resolvida').length,
       approvedPublicationsCount: Number(adminMetrics.publicacoes_aprovadas || muralPosts.filter((item) => item.status === 'Aprovado').length),
@@ -578,7 +585,6 @@ export async function createLostItem({
   role,
   title,
   place,
-  date,
   category,
   description,
   foundBy,
@@ -598,10 +604,20 @@ export async function createLostItem({
         encontrado_por,
         contato_retirada
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      values (
+        $1,
+        $2,
+        $3,
+        to_char(current_timestamp at time zone 'America/Sao_Paulo', 'DD/MM/YYYY, HH24:MI'),
+        $4,
+        $5,
+        $6,
+        $7,
+        $8
+      )
       returning id_item
     `,
-    [userId, title, place, date, lostItemOpenStatus, category, description, foundBy, secretaryEmail],
+    [userId, title, place, lostItemOpenStatus, category, description, foundBy, secretaryEmail],
   )
 
   await recordAuditLog({
@@ -1358,135 +1374,38 @@ export async function deleteReport(reportId, userId, role) {
     return getAppData(userId, role)
 }
 
-export async function getAdminDatabaseSnapshot(userId) {
+export async function getAdminLogs(userId) {
   const pool = await connectToDatabase()
-  await ensureCareerProfileSchema(pool)
-  await ensureJobApplicationSchema(pool)
-
   const user = await getUserById(userId)
 
   if (!user || user.role !== 'admin') {
-    throw new Error('Apenas administradores podem acessar a visualizacao de tabelas.')
+    throw new Error('Apenas administradores podem acessar os logs de auditoria.')
   }
 
-  const [
-    usersResult,
-    publicationsResult,
-    ridesResult,
-    rideRequestsResult,
-    publicRideRequestsResult,
-    applicationsResult,
-    lostItemsResult,
-    profilesResult,
-    reportsResult,
-    auditLogsResult,
-  ] = await Promise.all([
-    pool.query(
-      `
-        select id_usuario, nome, ra, login_admin, role, is_validado, data_criacao
-        from usuarios
-        order by id_usuario desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_publicacao, id_autor, categoria, titulo, local_empresa, status_moderacao, data_submissao
-        from publicacoes_mural
-        order by id_publicacao desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_carona, id_motorista, zona_destino, titulo, horario_saida, vagas, ponto_encontro, veiculo, status_carona
-        from caronas
-        order by id_carona desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_solicitacao, id_carona, id_solicitante, whatsapp_solicitante, endereco_embarque, status_solicitacao, data_criacao
-        from solicitacoes_caronas
-        order by id_solicitacao desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_pedido, id_solicitante, zona_destino, endereco_embarque, whatsapp_solicitante, status_pedido, id_usuario_aceitou, motorista_aceitou_whatsapp, data_criacao
-        from pedidos_caronas
-        order by id_pedido desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_candidatura, id_publicacao, id_usuario, email_aluno, email_contato_vaga, status_email, data_criacao
-        from candidaturas_vagas
-        order by id_candidatura desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_item, id_usuario_registro, titulo, local_encontrado, data_hora, status_item, categoria
-        from achados_perdidos
-        order by id_item desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_perfil, id_usuario, curso, semestre, email_contato, area_desejada, modelo_trabalho, cidade_preferencia
-        from perfis_profissionais
-        order by id_perfil desc
-      `,
-    ),
-    pool.query(
-      `
-        select id_denuncia, titulo, status_denuncia, data_criacao
-        from denuncias
-        order by id_denuncia desc
-      `,
-    ),
-    pool.query(
-      `
-        select
-          l.id_log,
-          l.id_usuario,
-          coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Sistema') as usuario,
-          l.acao,
-          l.entidade,
-          l.id_entidade,
-          l.detalhe,
-          l.data_criacao
-        from logs_auditoria l
-        left join usuarios u on u.id_usuario = l.id_usuario
-        order by l.data_criacao desc, l.id_log desc
-        limit 200
-      `,
-    ),
-  ])
+  const auditLogsResult = await pool.query(
+    `
+      select
+        l.id_log,
+        l.id_usuario,
+        coalesce(nullif(u.nome, ''), nullif(u.login_admin, ''), 'Sistema') as usuario,
+        u.ra,
+        l.acao,
+        l.entidade,
+        l.id_entidade,
+        l.detalhe,
+        to_char(
+          (l.data_criacao at time zone 'UTC') at time zone 'America/Sao_Paulo',
+          'DD/MM/YYYY HH24:MI:SS'
+        ) as data_criacao
+      from logs_auditoria l
+      left join usuarios u on u.id_usuario = l.id_usuario
+      order by l.data_criacao desc, l.id_log desc
+      limit 200
+    `,
+  )
 
   return {
-    totals: {
-      usuarios: usersResult.rows.length,
-      publicacoes_mural: publicationsResult.rows.length,
-      caronas: ridesResult.rows.length,
-      solicitacoes_caronas: rideRequestsResult.rows.length,
-      pedidos_caronas: publicRideRequestsResult.rows.length,
-      candidaturas_vagas: applicationsResult.rows.length,
-      achados_perdidos: lostItemsResult.rows.length,
-      perfis_profissionais: profilesResult.rows.length,
-      denuncias: reportsResult.rows.length,
-      logs_auditoria: auditLogsResult.rows.length,
-    },
-    tables: {
-      usuarios: usersResult.rows,
-      publicacoes_mural: publicationsResult.rows,
-      caronas: ridesResult.rows,
-      solicitacoes_caronas: rideRequestsResult.rows,
-      pedidos_caronas: publicRideRequestsResult.rows,
-      candidaturas_vagas: applicationsResult.rows,
-      achados_perdidos: lostItemsResult.rows,
-      perfis_profissionais: profilesResult.rows,
-      denuncias: reportsResult.rows,
-      logs_auditoria: auditLogsResult.rows,
-    },
+    total: auditLogsResult.rows.length,
+    logs: auditLogsResult.rows,
   }
 }

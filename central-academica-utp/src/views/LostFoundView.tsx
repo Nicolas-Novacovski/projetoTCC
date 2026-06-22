@@ -20,7 +20,7 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
     () =>
       normalizedSearch
         ? lostItems.filter((item) =>
-            [item.place, item.date, item.category]
+            [item.title, item.place, item.date, item.category]
               .filter(Boolean)
               .some((value) => value.toLowerCase().includes(normalizedSearch)),
           )
@@ -75,7 +75,8 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
         <SearchIcon />
         <input
           type="text"
-          placeholder="Pesquisar por local, data ou categoria"
+          placeholder="Pesquisar por nome, local, data ou categoria"
+          aria-label="Pesquisar itens por nome, local, data ou categoria"
           value={lostItemSearch}
           onChange={(event) => setLostItemSearch(event.target.value)}
         />
@@ -138,7 +139,7 @@ export function LostFoundView({ lostItems, onOpenRegisterModal }: LostFoundViewP
       ) : (
         <article className="lost-details-card">
           <h3>{normalizedSearch ? 'Nenhum item encontrado' : 'Nenhum item registrado'}</h3>
-          <p>{normalizedSearch ? 'Tente pesquisar por outro local, data ou categoria.' : 'Assim que novos registros forem adicionados ao banco, eles vao aparecer aqui.'}</p>
+          <p>{normalizedSearch ? 'Tente pesquisar por outro nome, local, data ou categoria.' : 'Assim que novos registros forem adicionados ao banco, eles vao aparecer aqui.'}</p>
         </article>
       )}
       {selectedItem ? (

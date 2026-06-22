@@ -1386,6 +1386,9 @@
 }
 
 .ride-card-enhanced {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   border: 1px solid #e3edf3;
 }
 
@@ -2950,6 +2953,111 @@
   white-space: nowrap;
 }
 
+.logs-search-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+}
+
+.logs-search-field {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid #d5e3eb;
+  border-radius: 14px;
+  background: #f8fbfc;
+}
+
+.logs-search-field svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  stroke: #4d768e;
+}
+
+.logs-search-field input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #17384e;
+  font: inherit;
+}
+
+.audit-log-list {
+  display: grid;
+  gap: 12px;
+}
+
+.audit-log-card {
+  padding: 16px 18px;
+  border: 1px solid #dce8ee;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfc 100%);
+}
+
+.audit-log-card-header,
+.audit-log-person {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.audit-log-card-header div {
+  min-width: 0;
+}
+
+.audit-log-card-header strong {
+  display: block;
+  color: #17384e;
+  font-size: 15px;
+}
+
+.audit-log-card-header span,
+.audit-log-card-header time,
+.audit-log-person {
+  color: #6b8797;
+  font-size: 12px;
+}
+
+.audit-log-card p {
+  margin: 12px 0;
+  color: #466579;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.audit-log-person {
+  padding-top: 10px;
+  border-top: 1px solid #e4edf2;
+}
+
+.audit-log-person strong {
+  color: #315b72;
+}
+
+@media (max-width: 720px) {
+  .logs-search-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .logs-search-card .secondary-button {
+    width: 100%;
+  }
+
+  .audit-log-card-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 .database-json-preview {
   margin-top: 18px;
   max-height: 280px;
@@ -3079,6 +3187,11 @@
   color: #2556b5;
 }
 
+.status-refused {
+  background: #feeceb;
+  color: #b42318;
+}
+
 .row-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3102,6 +3215,7 @@
   flex-wrap: wrap;
   gap: 10px;
   align-items: center;
+  margin-top: auto;
 }
 
 .ride-contact-actions .primary-button {

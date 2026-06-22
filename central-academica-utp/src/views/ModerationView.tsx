@@ -1,10 +1,9 @@
 import Swal from 'sweetalert2'
 import type { CSSProperties } from 'react'
-import { showFeatureAlert } from '../lib/alerts'
 import { slugifyStatus } from '../lib/navigation'
 import type { DashboardStats, LostItem, ModerationPost, PostStatus, Report, RideOffer, RideRequest } from '../types/app'
 import { requestJson } from '../lib/http'
-import { CheckIcon, EyeIcon, TrashIcon } from '../components/icons'
+import { CheckIcon, EyeIcon, TrashIcon, XIcon } from '../components/icons'
 
 type ModerationViewProps = {
   moderationQueue: ModerationPost[]
@@ -14,7 +13,7 @@ type ModerationViewProps = {
   rides: RideOffer[]
   rideRequests: RideRequest[]
   onRefresh: () => void
-  onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao'>, item: ModerationPost) => void
+  onModerate: (status: Extract<PostStatus, 'Aprovado' | 'Revisao' | 'Recusado'>, item: ModerationPost) => void
   onMarkLostItemRecovered: (item: LostItem) => void
   onDelete: (item: ModerationPost) => void
   onDeleteRideItem: (id: number, type: 'Oferta' | 'Pedido', title: string) => void
@@ -343,9 +342,6 @@ export function ModerationView({
     <section className="page-section moderation-section">
       <div className="page-heading">
         <div><h2>Central de Moderacao</h2><p>Revise publicacoes, acompanhe denuncias e aprove o que vai para o mural.</p></div>
-        <button className="primary-button" type="button" onClick={() => void showFeatureAlert('Exportacao', 'Funcionalidade em breve.')}>
-          Exportar relatorio
-        </button>
       </div>
       
       <section className="admin-dashboard" aria-label="Resumo operacional da administracao">
@@ -499,6 +495,11 @@ export function ModerationView({
                     <button type="button" title="Revisar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0369a1' }} onClick={() => onModerate('Revisao', item)}>
                       <EyeIcon />
                     </button>
+                    {item.status !== 'Recusado' && (
+                      <button type="button" title="Recusar" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b42318' }} onClick={() => onModerate('Recusado', item)}>
+                        <XIcon />
+                      </button>
+                    )}
                     <button type="button" title="Excluir" style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }} onClick={() => onDelete(item)}>
                       <TrashIcon />
                     </button>

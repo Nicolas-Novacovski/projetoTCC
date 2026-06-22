@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { BriefcaseIcon, CalendarIcon, ClockIcon, TrashIcon } from '../components/icons'
+import { slugifyStatus } from '../lib/navigation'
 import type { ApplicationStatus, CareerProfile, Deadline, JobInterest, MuralPost, UserRole } from '../types/app'
 
 type MuralViewProps = {
   userRole: UserRole
-  currentUserName: string 
+  currentUserId: number
+  currentUserName: string
   muralPosts: MuralPost[]
   importantDeadlines: Deadline[]
   careerProfile: CareerProfile
@@ -18,6 +20,7 @@ type MuralViewProps = {
 
 export function MuralView({
   userRole,
+  currentUserId,
   currentUserName,
   muralPosts,
   importantDeadlines,
@@ -44,8 +47,23 @@ export function MuralView({
     [muralPosts, selectedCategory],
   )
 
-  const interestedPosts = filteredPosts.filter((post) => appliedPostIds.includes(post.id))
-  const availablePosts = filteredPosts.filter((post) => !appliedPostIds.includes(post.id))
+  const isMyPost = (post: MuralPost) => {
+    const postAuthorId = Number(post.authorId)
+    const userId = Number(currentUserId)
+
+    if (Number.isFinite(postAuthorId) && postAuthorId > 0) {
+      return postAuthorId === userId
+    }
+
+    return Boolean(
+      post.author &&
+      currentUserName &&
+      post.author.trim().toLocaleLowerCase('pt-BR') === currentUserName.trim().toLocaleLowerCase('pt-BR'),
+    )
+  }
+  const myPosts = userRole === 'student' ? filteredPosts.filter(isMyPost) : []
+  const interestedPosts = filteredPosts.filter((post) => !isMyPost(post) && appliedPostIds.includes(post.id))
+  const availablePosts = filteredPosts.filter((post) => !isMyPost(post) && !appliedPostIds.includes(post.id))
 
   function getApplicationStatus(post: MuralPost): ApplicationStatus {
     return appliedPostIds.includes(post.id) ? 'submitted' : 'available'
@@ -70,11 +88,8 @@ export function MuralView({
     const interest = jobInterests.find((item) => item.postId === post.id)
     
    
-    const isMyPost = Boolean(
-      post.author && 
-      currentUserName && 
-      post.author.trim().toLowerCase() === currentUserName.trim().toLowerCase()
-    )
+    const ownedByCurrentUser = isMyPost(post)
+    const showStatus = userRole === 'admin' || ownedByCurrentUser
 
     return (
       <article key={post.id} className={`mural-card${applicationStatus === 'submitted' ? ' application-sent-card' : ''}`}>
@@ -92,22 +107,22 @@ export function MuralView({
         {post.meta ? <div className="card-meta"><span><ClockIcon />{post.meta[0]}</span><span>{post.meta[1]}</span></div> : null}
         
         <div className="card-meta">
-          <span>Autor: {isMyPost ? 'Você' : post.author}</span>
-          <span>Status: {post.status}</span>
+          <span>Autor: {ownedByCurrentUser ? 'Você' : post.author}</span>
+          {showStatus ? <span className={`status-pill status-${slugifyStatus(post.status)}`}>Status: {post.status}</span> : null}
         </div>
         
         
-        {(post.button || isMyPost) && userRole === 'student' ? (
+        {(post.button || ownedByCurrentUser) && userRole === 'student' ? (
           <div className="application-action-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
             <span style={{ fontSize: '14px', color: '#64748b' }}>
-              {isMyPost 
+              {ownedByCurrentUser
                 ? 'Esta publicação foi criada por você.' 
                 : applicationStatus === 'submitted' 
                   ? 'As informacoes da vaga foram encaminhadas para seu e-mail.' 
                   : `Contato da vaga: ${post.contactEmail || 'secretaria@utp.br'}`}
             </span>
             
-            {isMyPost ? (
+            {ownedByCurrentUser ? (
                <button 
                 type="button" 
                 className="ghost-button"
@@ -189,6 +204,18 @@ export function MuralView({
 
       <div className="mural-content-grid">
         <div className="mural-list">
+          {userRole === 'student' && myPosts.length > 0 ? (
+            <section className="mural-post-group" aria-label="Minhas publicações">
+              <div className="mural-group-heading">
+                <div>
+                  <h3>Minhas publicações</h3>
+                  <p>Acompanhe se suas publicações estão pendentes, aprovadas, em revisão ou recusadas.</p>
+                </div>
+                <span>{myPosts.length} item(ns)</span>
+              </div>
+              {myPosts.map(renderPost)}
+            </section>
+          ) : null}
           <section className="mural-post-group" aria-label="Publicacoes disponiveis">
             <div className="mural-group-heading">
               <div>
